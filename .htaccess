@@ -1,0 +1,18 @@
+RewriteEngine Off
+
+# Redirigir URLs amigables
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Prevenir acceso directo a archivos sensibles
+<Files ~ "\.(env|config|sql|log)$">
+    Deny from all
+</Files>
+
+# Prevenir listado de directorios
+Options -Indexes
+
+# Manejar errores
+ErrorDocument 404 /paginas/public/404.php
+ErrorDocument 403 /paginas/public/403.php

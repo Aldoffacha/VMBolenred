@@ -1,0 +1,719 @@
+/* 
+ * Colores Dark Theme & Azul E-commerce Elegante 
+ * ---------------------------------------
+ * --page-bg: El gris más oscuro, casi negro, para el fondo de la página.
+ * --card-bg: Un gris oscuro intermedio para las tarjetas y contenedores (elementos sobre el fondo).
+ * --accent-primary: Azul profesional para e-commerce.
+ * --accent-primary-bright: Azul más vivo para hover y énfasis.
+ * --text-light: Gris claro para asegurar la legibilidad del texto sobre fondos oscuros.
+ * --text-dark: Gris casi negro para contraste puntual.
+ */
+
+/* Modo Oscuro por defecto (se cambiará con JavaScript) */
+:root {
+    --page-bg: #121418; 
+    --card-bg: #1f2429; 
+    --accent-primary: #2563eb; 
+    --accent-primary-bright: #3b82f6;
+    --text-light: #d9d9d9;
+    --text-dark: #1a1e23;
+    --text-muted: #a0a0a0;
+}
+
+/* Modo Claro - Se activa con clase */
+body.modo-claro {
+    --page-bg: #f8fafc;
+    --card-bg: #ffffff;
+    --accent-primary: #0ea5e9;
+    --accent-primary-bright: #38bdf8;
+    --text-light: #374151;
+    --text-dark: #111827;
+    --text-muted: #6b7280;
+}
+
+/* Aplicar colores por defecto */
+body {
+    background: var(--page-bg) !important;
+    color: var(--text-light) !important;
+    transition: all 0.3s ease;
+}
+
+/* Estilos específicos para cliente */
+.cliente-dashboard {
+    background: var(--page-bg) !important;
+    min-height: 100vh;
+    color: var(--text-light) !important;
+}
+
+.quick-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--card-bg) !important;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid var(--accent-primary);
+    transition: all 0.3s ease;
+    color: var(--text-light) !important;
+}
+.stat-card:hover {
+    border-left-color: var(--accent-primary-bright);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
+.chart-container {
+    background: var(--card-bg) !important;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border-top: 3px solid var(--accent-primary);
+    color: var(--text-light) !important;
+}
+
+.recent-activity {
+    background: var(--card-bg) !important;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border-top: 3px solid var(--accent-primary);
+    color: var(--text-light) !important;
+}
+
+/* --- Nuevos Estilos para Cliente (Product Grid) --- */
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem 0;
+}
+
+.product-card {
+    background: var(--card-bg) !important;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    color: var(--text-light) !important;
+    transition: transform 0.3s, box-shadow 0.3s, border 0.3s;
+    border: 1px solid rgba(14, 165, 233, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--accent-primary-bright);
+}
+
+body.modo-claro .product-card {
+    border: 1px solid rgba(14, 165, 233, 0.15);
+}
+
+.product-image {
+    height: 200px;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 3px solid var(--accent-primary);
+}
+
+body.modo-claro .product-image {
+    background: #e9ecef;
+}
+
+.product-info {
+    padding: 1rem;
+}
+
+.price {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--accent-primary);
+}
+.price:hover {
+    color: var(--accent-primary-bright);
+}
+
+.cart-summary {
+    background: var(--card-bg) !important;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    position: sticky;
+    top: 1rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--accent-primary);
+    color: var(--text-light) !important;
+}
+
+/* --- Estilos para las tarjetas de estadísticas --- */
+
+.clickable-card {
+    background: var(--card-bg) !important;
+    border-radius: 0.75rem !important;
+    border: 1px solid rgba(37, 99, 235, 0.1) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease !important;
+    cursor: pointer;
+    color: var(--text-light) !important;
+}
+
+body.modo-claro .clickable-card {
+    border: 1px solid rgba(14, 165, 233, 0.1) !important;
+}
+
+.clickable-card:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.2) !important;
+    border-color: var(--accent-primary) !important;
+}
+
+body.modo-claro .clickable-card:hover {
+    box-shadow: 0 8px 25px rgba(14, 165, 233, 0.2) !important;
+}
+
+.border-left-primary { border-left: 4px solid var(--accent-primary) !important; }
+.border-left-success { border-left: 4px solid #10b981 !important; }
+.border-left-info { border-left: 4px solid #3b82f6 !important; }
+.border-left-warning { border-left: 4px solid #f59e0b !important; }
+
+.text-primary { color: var(--accent-primary) !important; }
+.text-success { color: #10b981 !important; }
+.text-info { color: #3b82f6 !important; }
+.text-warning { color: #f59e0b !important; }
+
+.text-gray-800 { color: var(--text-light) !important; }
+.text-muted { color: var(--text-muted) !important; }
+
+/* Main Cards */
+.card {
+    background: var(--card-bg) !important;
+    border: 1px solid rgba(37, 99, 235, 0.1) !important;
+    border-radius: 0.75rem !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+    color: var(--text-light) !important;
+}
+
+body.modo-claro .card {
+    border: 1px solid rgba(14, 165, 233, 0.1) !important;
+}
+
+.card-header {
+    background: var(--page-bg) !important;
+    border-bottom: 2px solid var(--accent-primary) !important;
+    color: var(--text-light) !important;
+    font-weight: 600;
+}
+
+.card-header h6 {
+    color: var(--accent-primary-bright) !important;
+    font-weight: 700;
+}
+
+/* Buttons */
+.btn-primary {
+    background: var(--accent-primary) !important;
+    border: none !important;
+    color: white !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3) !important;
+}
+
+body.modo-claro .btn-primary {
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3) !important;
+}
+
+.btn-primary:hover {
+    background: var(--accent-primary-bright) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
+}
+
+body.modo-claro .btn-primary:hover {
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4) !important;
+}
+
+.btn-outline-primary {
+    border: 2px solid var(--accent-primary) !important;
+    color: var(--accent-primary) !important;
+    background: transparent !important;
+}
+
+.btn-outline-primary:hover {
+    background: var(--accent-primary) !important;
+    color: white !important;
+    border-color: var(--accent-primary) !important;
+}
+
+/* Tables */
+.table {
+    background: var(--card-bg) !important;
+    color: var(--text-light) !important;
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.table th {
+    background: var(--page-bg) !important;
+    border-bottom: 2px solid var(--accent-primary) !important;
+    color: var(--text-light) !important;
+    font-weight: 600;
+}
+
+.table td {
+    border-bottom: 1px solid rgba(37, 99, 235, 0.1) !important;
+    background: var(--card-bg) !important;
+}
+
+body.modo-claro .table td {
+    border-bottom: 1px solid rgba(14, 165, 233, 0.1) !important;
+}
+
+.table tbody tr:hover {
+    background: rgba(37, 99, 235, 0.05) !important;
+}
+
+body.modo-claro .table tbody tr:hover {
+    background: rgba(14, 165, 233, 0.05) !important;
+}
+
+/* Badges */
+.badge {
+    border: 1px solid transparent;
+}
+
+.bg-primary { background: var(--accent-primary) !important; }
+.bg-success { background: #10b981 !important; }
+.bg-warning { background: #f59e0b !important; color: #000 !important; }
+.bg-info { background: #3b82f6 !important; }
+.bg-secondary { background: #6b7280 !important; }
+
+/* Modals */
+.modal-content {
+    background: var(--card-bg) !important;
+    border: 2px solid var(--accent-primary) !important;
+    border-radius: 0.75rem !important;
+    color: var(--text-light) !important;
+}
+
+.modal-header {
+    background: var(--page-bg) !important;
+    border-bottom: 2px solid var(--accent-primary) !important;
+}
+
+.modal-footer {
+    background: var(--page-bg) !important;
+    border-top: 1px solid rgba(37, 99, 235, 0.1) !important;
+}
+
+body.modo-claro .modal-footer {
+    border-top: 1px solid rgba(14, 165, 233, 0.1) !important;
+}
+
+/* Form Controls */
+.form-control {
+    background: var(--card-bg) !important;
+    border: 2px solid rgba(37, 99, 235, 0.1) !important;
+    color: var(--text-light) !important;
+    border-radius: 0.5rem !important;
+}
+
+body.modo-claro .form-control {
+    border: 2px solid rgba(14, 165, 233, 0.1) !important;
+}
+
+.form-control:focus {
+    border-color: var(--accent-primary) !important;
+    box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25) !important;
+    background: var(--card-bg) !important;
+    color: var(--text-light) !important;
+}
+
+body.modo-claro .form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(14, 165, 233, 0.25) !important;
+}
+
+.form-label {
+    color: var(--text-light) !important;
+    font-weight: 600;
+}
+
+.form-select {
+    background: var(--card-bg) !important;
+    border: 2px solid rgba(37, 99, 235, 0.1) !important;
+    color: var(--text-light) !important;
+    border-radius: 0.5rem !important;
+}
+
+body.modo-claro .form-select {
+    border: 2px solid rgba(14, 165, 233, 0.1) !important;
+}
+
+.form-select:focus {
+    border-color: var(--accent-primary) !important;
+    box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25) !important;
+}
+
+body.modo-claro .form-select:focus {
+    box-shadow: 0 0 0 0.2rem rgba(14, 165, 233, 0.25) !important;
+}
+
+/* Utility Classes */
+.bg-light {
+    background: rgba(37, 99, 235, 0.05) !important;
+    color: var(--text-light) !important;
+}
+
+body.modo-claro .bg-light {
+    background: rgba(14, 165, 233, 0.05) !important;
+}
+
+.text-success { color: #10b981 !important; }
+.text-muted { color: var(--text-muted) !important; }
+
+/* Main content area */
+main {
+    background: var(--page-bg) !important;
+}
+
+/* Border bottom for header */
+.border-bottom {
+    border-bottom: 2px solid var(--accent-primary) !important;
+}
+
+/* Input group */
+.input-group .btn-outline-secondary {
+    background: var(--card-bg) !important;
+    border-color: rgba(37, 99, 235, 0.1) !important;
+    color: var(--text-light) !important;
+}
+
+body.modo-claro .input-group .btn-outline-secondary {
+    border-color: rgba(14, 165, 233, 0.1) !important;
+}
+
+.input-group .btn-outline-secondary:hover {
+    background: var(--accent-primary) !important;
+    border-color: var(--accent-primary) !important;
+    color: white !important;
+}
+
+/* Text colors for specific elements */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--accent-primary-bright) !important;
+    font-weight: 600;
+}
+
+/* Card titles in product cards */
+.card-title {
+    color: var(--text-light) !important;
+    font-weight: 600;
+}
+
+/* Asegurar que el sidebar también tenga el tema claro */
+.sidebar {
+    background: var(--page-bg) !important;
+}
+
+/* Mejorar el contraste del texto en todos los elementos */
+body {
+    color: var(--text-light) !important;
+}
+
+/* Efectos hover mejorados */
+.clickable-card:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.2) !important;
+    border-color: var(--accent-primary) !important;
+}
+
+body.modo-claro .clickable-card:hover {
+    box-shadow: 0 8px 25px rgba(14, 165, 233, 0.2) !important;
+}
+
+/* Forzar estilos para el dashboard del cliente */
+.cliente-dashboard {
+    background: var(--page-bg) !important;
+    min-height: 100vh !important;
+    color: var(--text-light) !important;
+}
+
+.cliente-dashboard .card {
+    background: var(--card-bg) !important;
+    border: 1px solid rgba(37, 99, 235, 0.1) !important;
+    color: var(--text-light) !important;
+}
+
+body.modo-claro .cliente-dashboard .card {
+    border: 1px solid rgba(14, 165, 233, 0.1) !important;
+}
+
+.cliente-dashboard .card-header {
+    background: var(--page-bg) !important;
+    border-bottom: 2px solid var(--accent-primary) !important;
+    color: var(--text-light) !important;
+}
+
+.cliente-dashboard .btn-primary {
+    background: var(--accent-primary) !important;
+    border: none !important;
+}
+
+.cliente-dashboard .btn-outline-primary {
+    border: 2px solid var(--accent-primary) !important;
+    color: var(--accent-primary) !important;
+}
+
+.cliente-dashboard .text-primary {
+    color: var(--accent-primary) !important;
+}
+
+.cliente-dashboard .border-left-primary {
+    border-left: 4px solid var(--accent-primary) !important;
+}
+
+/* Asegurar que el main tenga el fondo claro */
+.cliente-dashboard main {
+    background: var(--page-bg) !important;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    background: var(--page-bg) !important;
+    border-right: 2px solid var(--accent-primary) !important;
+}
+
+.sidebar .nav-link {
+    color: var(--text-light) !important;
+    border-radius: 0.5rem;
+    margin: 0.2rem 0;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
+}
+
+.sidebar .nav-link:hover {
+    background: rgba(37, 99, 235, 0.1) !important;
+    transform: translateX(5px);
+    border-left-color: var(--accent-primary) !important;
+    color: var(--text-light) !important;
+}
+
+body.modo-claro .sidebar .nav-link:hover {
+    background: rgba(14, 165, 233, 0.1) !important;
+}
+
+.sidebar .nav-link.active {
+    background: var(--accent-primary) !important;
+    color: white !important;
+    border-left-color: white !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+}
+
+body.modo-claro .sidebar .nav-link.active {
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.4);
+}
+
+.sidebar .badge {
+    background: var(--accent-primary) !important;
+    color: white !important;
+    border: none;
+}
+
+.sidebar-footer {
+    border-top: 1px solid var(--accent-primary);
+    color: var(--text-light);
+}
+
+.sidebar-footer small {
+    color: var(--text-light) !important;
+}
+
+.sidebar .text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* Header Styles */
+.header {
+    background: var(--page-bg) !important;
+    border-bottom: 2px solid var(--accent-primary) !important;
+    color: var(--text-light) !important;
+}
+
+.navbar {
+    background: var(--page-bg) !important;
+}
+
+.navbar-brand {
+    color: var(--accent-primary-bright) !important;
+    font-weight: bold;
+}
+
+.navbar-text {
+    color: var(--text-light) !important;
+}
+
+.navbar-text strong {
+    color: var(--accent-primary-bright) !important;
+}
+
+.btn-outline-light {
+    border-color: var(--accent-primary) !important;
+    color: var(--accent-primary) !important;
+}
+
+.btn-outline-light:hover {
+    background: var(--accent-primary) !important;
+    color: white !important;
+    border-color: var(--accent-primary) !important;
+}
+
+/* ===== ICONS COLOR FIX ===== */
+.sidebar .fas,
+.sidebar .fab,
+.sidebar .far {
+    color: var(--accent-primary) !important;
+}
+
+.sidebar .nav-link.active .fas,
+.sidebar .nav-link.active .fab,
+.sidebar .nav-link.active .far {
+    color: white !important;
+}
+
+/* ===== BODY BACKGROUND FIX ===== */
+body {
+    background: var(--page-bg) !important;
+    color: var(--text-light) !important;
+}
+
+/* ===== HR STYLES ===== */
+.sidebar hr {
+    background: var(--accent-primary) !important;
+    opacity: 0.6;
+}
+
+/* ===== SIDEBAR FOOTER SPECIFIC ===== */
+.sidebar .sidebar-footer {
+    background: rgba(248, 249, 250, 0.8) !important;
+    border-top: 1px solid var(--accent-primary) !important;
+}
+
+body.modo-claro .sidebar .sidebar-footer {
+    background: rgba(248, 249, 250, 0.8) !important;
+}
+
+.sidebar .sidebar-footer .text-white {
+    color: var(--text-light) !important;
+}
+
+.sidebar .sidebar-footer .text-white-50 {
+    color: var(--text-muted) !important;
+}
+
+/* ===== NAVBAR ICONS ===== */
+.navbar .fas {
+    color: var(--accent-primary) !important;
+}
+
+/* ===== FORZAR ESTILOS EN CONTENEDORES PRINCIPALES ===== */
+.container-fluid.flex-grow-1 {
+    background: var(--page-bg) !important;
+}
+
+.row.flex-grow-1 {
+    background: var(--page-bg) !important;
+}
+
+/* ===== SWITCH MODO CLARO/OSCURO ===== */
+.theme-switch {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+.theme-switch-btn {
+    background: var(--accent-primary);
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.theme-switch-btn:hover {
+    background: var(--accent-primary-bright);
+    transform: scale(1.1);
+}
+
+/* ===== CORRECCIÓN PARA CONTACTO Y ELEMENTOS ESPECÍFICOS ===== */
+.contact-section,
+.contacto,
+.footer-contact {
+    background: var(--page-bg) !important;
+    color: var(--text-light) !important;
+}
+
+.contact-section .card,
+.contacto .card {
+    background: var(--card-bg) !important;
+    border: 1px solid rgba(37, 99, 235, 0.1) !important;
+    color: var(--text-light) !important;
+}
+
+body.modo-claro .contact-section .card,
+body.modo-claro .contacto .card {
+    border: 1px solid rgba(14, 165, 233, 0.1) !important;
+}
+
+/* Asegurar que todos los textos sean visibles */
+.text-dark {
+    color: var(--text-light) !important;
+}
+
+.text-white {
+    color: var(--text-light) !important;
+}
+
+/* Corrección para elementos que se vuelven plomo en modo oscuro */
+.bg-dark {
+    background: var(--page-bg) !important;
+}
+
+.bg-white {
+    background: var(--card-bg) !important;
+}
+
+/* Forzar colores en elementos específicos que puedan buguearse */
+[class*="bg-"]:not(.bg-primary):not(.bg-success):not(.bg-warning):not(.bg-info):not(.bg-secondary) {
+    background: var(--page-bg) !important;
+}
+
+/* Asegurar que los bordes sean consistentes */
+.border,
+.border-top,
+.border-bottom,
+.border-left,
+.border-right {
+    border-color: rgba(37, 99, 235, 0.1) !important;
+}
+
+body.modo-claro .border,
+body.modo-claro .border-top,
+body.modo-claro .border-bottom,
+body.modo-claro .border-left,
+body.modo-claro .border-right {
+    border-color: rgba(14, 165, 233, 0.1) !important;
+}

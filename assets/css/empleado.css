@@ -1,0 +1,162 @@
+/* * Colores Dark Theme & Rojo Vino Elegante 
+ * ---------------------------------------
+ * --page-bg: El gris más oscuro, casi negro, para el fondo de la página.
+ * --card-bg: Un gris oscuro intermedio para las tarjetas y contenedores (elementos sobre el fondo).
+ * --accent-red-wine: El rojo vino oscuro (#9a031e) para bordes y acentos.
+ * --text-light: Gris claro para asegurar la legibilidad del texto sobre fondos oscuros.
+ */
+:root {
+    --page-bg: #1a1e23; 
+    --card-bg: #2c333a; 
+    --accent-red-wine: #9a031e; 
+    --text-light: #e0e0e0;
+    --text-dark: #1a1e23; /* Usado para texto sobre fondos claros (si los hubiera) o elementos muy oscuros */
+}
+
+/* Estilos específicos para admin */
+.admin-dashboard {
+    /* Fondo de página gris muy oscuro */
+    background: var(--page-bg);
+    min-height: 100vh;
+    /* Color de texto claro para alto contraste */
+    color: var(--text-light); 
+}
+
+.quick-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    /* Fondo de tarjeta gris oscuro */
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    /* Sombra más prominente y oscura para el tema dark */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    /* Borde acentuado en Rojo Vino Oscuro */
+    border-left: 4px solid var(--accent-red-wine);
+}
+
+.chart-container {
+    /* Fondo de contenedor gris oscuro */
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+    /* Sombra consistente */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.recent-activity {
+    /* Fondo de contenedor gris oscuro */
+    background: var(--card-bg);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    /* Sombra consistente */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Estilos para Cliente (Product Grid) --- */
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem 0;
+}
+
+.product-card {
+    /* Fondo de tarjeta gris oscuro */
+    background: var(--card-bg);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    /* Aseguramos que el texto dentro de la tarjeta sea claro */
+    color: var(--text-light);
+    transition: transform 0.3s, box-shadow 0.3s;
+    /* Borde sutil para darle más definición */
+    border: 1px solid rgba(255, 255, 255, 0.1); 
+}
+
+.product-card:hover {
+    /* Efecto de elevación con sombra más profunda */
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+.product-image {
+    height: 200px;
+    /* Un gris claro para el fondo de la imagen, que contraste un poco */
+    background: #444c56; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Borde inferior Rojo Vino para acento */
+    border-bottom: 3px solid var(--accent-red-wine); 
+}
+
+.product-info {
+    padding: 1rem;
+}
+
+.price {
+    font-size: 1.25rem;
+    font-weight: bold;
+    /* Precio destacado en Rojo Vino Oscuro */
+    color: var(--accent-red-wine);
+}
+
+.cart-summary {
+    /* Fondo de carrito gris oscuro, como una tarjeta más */
+    background: var(--card-bg);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    position: sticky;
+    top: 1rem;
+    /* Sombra y acento Rojo Vino */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--accent-red-wine);
+}
+
+/* --- Nuevos Estilos para Empleado (Employee Dashboard) --- */
+
+.empleado-dashboard {
+    /* Fondo de página gris muy oscuro */
+    background: var(--page-bg);
+    min-height: 100vh;
+    /* Color de texto claro para alto contraste */
+    color: var(--text-light);
+}
+
+.pedidos-pendientes {
+    /* Fondo de tarjeta gris oscuro */
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.estado-pedido {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    /* Color de texto blanco para contrastar con los fondos oscuros de estado */
+    color: white; 
+}
+
+.pendiente { 
+    /* Fondo en Rojo Vino Oscuro para darle la máxima prioridad */
+    background: var(--accent-red-wine); 
+}
+.procesando { 
+    /* Fondo azul grisáceo oscuro y elegante */
+    background: #394a61; 
+}
+.completado { 
+    /* Fondo verde grisáceo oscuro y elegante */
+    background: #3b5a4a; 
+}

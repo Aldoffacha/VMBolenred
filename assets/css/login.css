@@ -1,0 +1,259 @@
+/* 
+ * Colores Dark Theme & Rojo Vino Elegante 
+ * ---------------------------------------
+ * --page-bg: El gris más oscuro, casi negro, para el fondo de la página.
+ * --card-bg: Un gris oscuro intermedio para las tarjetas y contenedores (elementos sobre el fondo).
+ * --accent-red-wine: El rojo vino oscuro (#9a031e) para bordes y acentos.
+ * --accent-red-wine-bright: Un rojo vino más vivo para hover y énfasis.
+ * --text-light: Gris claro para asegurar la legibilidad del texto sobre fondos oscuros.
+ * --text-dark: Gris casi negro para contraste puntual.
+ */
+:root {
+    --page-bg: #121418; 
+    --card-bg: #1f2429; 
+    --accent-red-wine: #9a031e; 
+    --accent-red-wine-bright: #c1121f;
+    --text-light: #d9d9d9;
+    --text-dark: #1a1e23;
+    --text-muted: #a0a0a0;
+}
+
+/* --- Estilos para Login --- */
+
+.login-page {
+    background: 
+        linear-gradient(rgba(18, 20, 24, 0.85), rgba(18, 20, 24, 0.9)), 
+        url('../../assets/img/logos/login-bg.jpg') no-repeat center center fixed;
+    background-size: cover;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 20px;
+}
+
+.login-container {
+    max-width: 400px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.login-card {
+    background: rgba(31, 36, 41, 0.92); /* Menos transparencia para mejor compatibilidad */
+    padding: 40px;
+    border-radius: 15px;
+    color: var(--text-light);
+    box-shadow: 
+        0 10px 30px rgba(0,0,0,0.7), 
+        0 0 20px rgba(154, 3, 30, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1); /* Efecto de brillo interno */
+    border: 1px solid var(--accent-red-wine);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Efecto de desenfoque simulado para navegadores que no soportan backdrop-filter */
+.login-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: inherit;
+    filter: blur(8px);
+    z-index: -1;
+    margin: -10px;
+}
+
+.login-card:hover {
+    background: rgba(31, 36, 41, 0.95);
+    box-shadow: 
+        0 15px 40px rgba(0,0,0,0.8), 
+        0 0 25px rgba(154, 3, 30, 0.7),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Mantener los elementos del formulario con buena legibilidad */
+.login-card .form-control,
+.login-card .form-select,
+.login-card .btn {
+    background: rgba(47, 54, 61, 0.95);
+    border: 1px solid rgba(154, 3, 30, 0.3);
+    color: var(--text-light);
+    transition: all 0.3s ease;
+}
+
+.login-card .form-control:focus,
+.login-card .form-select:focus {
+    background: rgba(47, 54, 61, 0.98);
+    border-color: var(--accent-red-wine);
+    box-shadow: 0 0 0 0.2rem rgba(154, 3, 30, 0.25);
+    color: var(--text-light);
+}
+
+.login-card .form-control::placeholder {
+    color: var(--text-muted);
+}
+
+.login-card .btn-primary {
+    background: linear-gradient(135deg, var(--accent-red-wine), var(--accent-red-wine-bright));
+    border: none;
+    font-weight: 600;
+}
+
+.login-card .btn-primary:hover {
+    background: linear-gradient(135deg, var(--accent-red-wine-bright), #d90429);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(154, 3, 30, 0.4);
+}
+
+.login-card .alert {
+    background: rgba(193, 18, 31, 0.2);
+    border: 1px solid rgba(193, 18, 31, 0.4);
+    color: var(--text-light);
+}
+
+/* Asegurar que el texto sea legible */
+.login-card h2,
+.login-card p,
+.login-card .form-label,
+.login-card .text-primary,
+.login-card .text-muted,
+.login-card a {
+    color: var(--text-light) !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.login-card a:hover {
+    color: var(--accent-red-wine-bright) !important;
+}
+
+/* Estilos específicos para admin */
+.admin-dashboard {
+    background: var(--page-bg);
+    min-height: 100vh;
+    color: var(--text-light); 
+}
+
+.quick-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    border-left: 4px solid var(--accent-red-wine);
+    transition: all 0.3s ease;
+}
+.stat-card:hover {
+    border-left-color: var(--accent-red-wine-bright);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7);
+}
+
+.chart-container {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    border-top: 3px solid var(--accent-red-wine);
+}
+
+.recent-activity {
+    background: var(--card-bg);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    border-top: 3px solid var(--accent-red-wine);
+}
+
+/* --- Estilos para Cliente (Product Grid) --- */
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem 0;
+}
+
+.product-card {
+    background: var(--card-bg);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    color: var(--text-light);
+    transition: transform 0.3s, box-shadow 0.3s, border 0.3s;
+    border: 1px solid rgba(255, 255, 255, 0.1); 
+}
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.7);
+    border: 1px solid var(--accent-red-wine-bright);
+}
+
+.product-image {
+    height: 200px;
+    background: #2b2f36; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 3px solid var(--accent-red-wine); 
+}
+
+.product-info {
+    padding: 1rem;
+}
+
+.price {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--accent-red-wine);
+}
+.price:hover {
+    color: var(--accent-red-wine-bright);
+}
+
+.cart-summary {
+    background: var(--card-bg);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    position: sticky;
+    top: 1rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--accent-red-wine);
+}
+
+/* --- Estilos para Empleado (Employee Dashboard) --- */
+
+.empleado-dashboard {
+    background: var(--page-bg);
+    min-height: 100vh;
+    color: var(--text-light);
+}
+
+.pedidos-pendientes {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+}
+
+.estado-pedido {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    color: white; 
+}
+
+.pendiente { background: var(--accent-red-wine); }
+.procesando { background: #394a61; }
+.completado { background: #3b5a4a; }
