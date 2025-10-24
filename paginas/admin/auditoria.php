@@ -27,7 +27,7 @@ $query = "SELECT a.*,
           LEFT JOIN administradores ad ON a.id_usuario = ad.id_admin AND a.tipo_usuario = 'admin'
           LEFT JOIN empleados e ON a.id_usuario = e.id_empleado AND a.tipo_usuario = 'empleado'
           LEFT JOIN clientes c ON a.id_usuario = c.id_cliente AND a.tipo_usuario = 'cliente'
-          WHERE a.fecha_auditoria BETWEEN ? AND ? + INTERVAL 1 DAY";
+          WHERE a.fecha_auditoria BETWEEN ? AND (?::timestamp + INTERVAL '1 day')";
 $params = [$fecha_inicio, $fecha_fin];
 
 if (!empty($tipo_usuario)) {
@@ -45,7 +45,7 @@ if (!empty($tabla)) {
     $params[] = $tabla;
 }
 
-$query_count = "SELECT COUNT(*) as total FROM auditoria a WHERE a.fecha_auditoria BETWEEN ? AND ? + INTERVAL 1 DAY";
+$query_count = "SELECT COUNT(*) as total FROM auditoria a WHERE a.fecha_auditoria BETWEEN ? AND (?::timestamp + INTERVAL '1 day')";
 $params_count = [$fecha_inicio, $fecha_fin];
 
 if (!empty($tipo_usuario)) {
@@ -81,9 +81,9 @@ $stats_query = "SELECT
     COUNT(*) as total_registros,
     COUNT(DISTINCT id_usuario) as usuarios_activos,
     COUNT(DISTINCT tabla_afectada) as tablas_afectadas,
-    SUM(CASE WHEN fecha_auditoria >= CURDATE() THEN 1 ELSE 0 END) as registros_hoy
+    SUM(CASE WHEN fecha_auditoria >= CURRENT_DATE THEN 1 ELSE 0 END) as registros_hoy
 FROM auditoria 
-WHERE fecha_auditoria BETWEEN ? AND ? + INTERVAL 1 DAY";
+WHERE fecha_auditoria BETWEEN ? AND (?::timestamp + INTERVAL '1 day')";
 $stats_stmt = $db->prepare($stats_query);
 $stats_stmt->execute([$fecha_inicio, $fecha_fin]);
 $estadisticas = $stats_stmt->fetch(PDO::FETCH_ASSOC);

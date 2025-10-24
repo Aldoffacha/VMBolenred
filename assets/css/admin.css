@@ -544,3 +544,51 @@ body *:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):
 .btn-outline-primary:hover {
     color: white !important;
 }
+
+
+.modal-body,
+.modal-body *:not(.text-muted):not(.text-success):not(.text-danger):not(.text-warning):not(.text-info) {
+    color: #d9d9d9 !important;
+}
+
+.modal-body .table,
+.modal-body .table * {
+    color: #d9d9d9 !important;
+}
+
+.modal-body .text-muted {
+    color: #a0a0a0 !important;
+}
+
+.modal-body .text-success {
+    color: #10b981 !important;
+}
+
+.modal-body .text-danger {
+    color: #ef4444 !important;
+}
+
+.modal-body .text-warning {
+    color: #f59e0b !important;
+}
+
+.modal-body .text-info {
+    color: #3b82f6 !important;
+}
+
+/* Cards con colores de fondo */
+.modal-body .card.bg-primary,
+.modal-body .card.bg-success, 
+.modal-body .card.bg-info,
+.modal-body .card.bg-warning,
+.modal-body .card.bg-danger {
+    color: white !important;
+}
+
+.modal-body .card.bg-primary *,
+.modal-body .card.bg-success *,
+.modal-body .card.bg-info *,
+.modal-body .card.bg-warning *,
+.modal-body .card.bg-danger * {
+    color: white !important;
+}

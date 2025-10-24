@@ -128,7 +128,7 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER BY id_pr
                                 <td><?php echo $producto['id_producto']; ?></td>
                                 <td>
                                     <?php if (!empty($producto['imagen'])): ?>
-                                        <img src="../../assets/images/productos/<?php echo htmlspecialchars($producto['imagen']); ?>" 
+                                        <img src="../../assets/img/productos/<?php echo htmlspecialchars($producto['imagen']); ?>" 
                                              alt="<?php echo htmlspecialchars($producto['nombre']); ?>" 
                                              style="width: 50px; height: 50px; object-fit: cover;">
                                     <?php else: ?>

@@ -30,17 +30,19 @@ $clientes_nuevos = $db->prepare("SELECT COUNT(*) as total FROM clientes WHERE fe
 $clientes_nuevos->execute([$fecha_inicio, $fecha_fin]);
 $total_clientes = $clientes_nuevos->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
 
-// Ventas por mes para el gráfico (excluyendo cancelados)
+// Ventas por mes para el gráfico 
 $ventas_mensuales = $db->query("
-    SELECT YEAR(fecha) as año, MONTH(fecha) as mes, SUM(total) as total 
-    FROM pedidos 
-    WHERE fecha >= DATE_SUB(NOW(), INTERVAL 6 MONTH) 
-    AND estado != 'cancelado'
-    GROUP BY YEAR(fecha), MONTH(fecha) 
+    SELECT 
+        EXTRACT(YEAR FROM fecha) AS año,
+        EXTRACT(MONTH FROM fecha) AS mes,
+        SUM(total) AS total
+    FROM pedidos
+    WHERE fecha >= (NOW() - INTERVAL '6 months')
+      AND estado != 'cancelado'
+    GROUP BY año, mes
     ORDER BY año, mes
 ")->fetchAll(PDO::FETCH_ASSOC);
-
-// Productos más vendidos (excluyendo cancelados)
+// Productos más vendidos 
 $productos_vendidos = $db->prepare("
     SELECT p.nombre, SUM(pd.cantidad) as cantidad, SUM(pd.precio * pd.cantidad) as total 
     FROM pedido_detalles pd 
@@ -54,7 +56,7 @@ $productos_vendidos = $db->prepare("
 ");
 $productos_vendidos->execute([$fecha_inicio, $fecha_fin]);
 
-// Distribución por estado de pedidos
+//estado de pedidos
 $estados_pedidos = $db->prepare("
     SELECT estado, COUNT(*) as total 
     FROM pedidos 
@@ -97,7 +99,7 @@ $distribucion_estados = $estados_pedidos->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
 
-                <!-- Filtros -->
+                
                 <div class="card mb-4">
                     <div class="card-body">
                         <form method="GET" class="row g-3">
@@ -126,7 +128,7 @@ $distribucion_estados = $estados_pedidos->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
 
-                <!-- Estadísticas rápidas -->
+                
                 <div class="row mb-4">
                     <div class="col-md-3">
                         <div class="card text-white bg-primary">
@@ -222,7 +224,7 @@ $distribucion_estados = $estados_pedidos->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
 
-                <!-- Productos más vendidos -->
+                
                 <div class="card">
                     <div class="card-header">
                         <h5 class="card-title mb-0">Productos Más Vendidos</h5>

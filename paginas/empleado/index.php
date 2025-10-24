@@ -12,7 +12,7 @@ $stmt = $db->prepare("SELECT COUNT(*) as total_pedidos FROM pedidos WHERE estado
 $stmt->execute();
 $total_pedidos = $stmt->fetch(PDO::FETCH_ASSOC)['total_pedidos'];
 
-$stmt = $db->prepare("SELECT COUNT(*) as cotizaciones_hoy FROM cotizaciones WHERE DATE(fecha) = CURDATE()");
+$stmt = $db->prepare("SELECT COUNT(*) as cotizaciones_hoy FROM cotizaciones WHERE fecha::date = CURRENT_DATE");
 $stmt->execute();
 $cotizaciones_hoy = $stmt->fetch(PDO::FETCH_ASSOC)['cotizaciones_hoy'];
 
@@ -90,7 +90,7 @@ $pedidos_recientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         Clientes Nuevos (Mes)</div>
                                     <div class="h5 mb-0 font-weight-bold text-gray-800">
                                         <?php 
-                                        $stmt = $db->prepare("SELECT COUNT(*) as total FROM clientes WHERE MONTH(fecha_registro) = MONTH(CURDATE())");
+                                        $stmt = $db->prepare("SELECT COUNT(*) as total FROM clientes WHERE EXTRACT(MONTH FROM fecha_registro) = EXTRACT(MONTH FROM CURRENT_DATE)");
                                         $stmt->execute();
                                         echo $stmt->fetch(PDO::FETCH_ASSOC)['total'];
                                         ?>
@@ -113,7 +113,7 @@ $pedidos_recientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         Ingresos del Mes</div>
                                     <div class="h5 mb-0 font-weight-bold text-gray-800">
                                         $<?php 
-                                        $stmt = $db->prepare("SELECT COALESCE(SUM(total), 0) as total FROM pedidos WHERE MONTH(fecha) = MONTH(CURDATE()) AND estado = 'completado'");
+                                        $stmt = $db->prepare("SELECT COALESCE(SUM(total), 0) as total FROM pedidos WHERE EXTRACT(MONTH FROM fecha) = EXTRACT(MONTH FROM CURRENT_DATE) AND estado = 'completado'");
                                         $stmt->execute();
                                         echo number_format($stmt->fetch(PDO::FETCH_ASSOC)['total'], 2);
                                         ?>

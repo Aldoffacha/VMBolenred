@@ -8,7 +8,7 @@ error_log("=== ACCESO A DASHBOARD ADMIN ===");
 error_log("Session ID: " . ($_SESSION['user_id'] ?? 'NO'));
 error_log("Rol: " . ($_SESSION['rol'] ?? 'NO'));
 
-// Verificar autenticación con manejo de errores
+// Verificar autenticación
 try {
     Auth::checkAuth('admin');
 } catch (Exception $e) {
@@ -20,73 +20,83 @@ try {
 $db = (new Database())->getConnection();
 $stats = [];
 
-// Total de clientes activos
+// ======= CLIENTES ACTIVOS =======
 $stmt = $db->query("SELECT COUNT(*) as total FROM clientes WHERE estado = 1");
-$stats['clientes'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+$stats['clientes'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
-// Total de productos activos
+// ======= PRODUCTOS ACTIVOS =======
 $stmt = $db->query("SELECT COUNT(*) as total FROM productos WHERE estado = 1");
-$stats['productos'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+$stats['productos'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
-// Total de pedidos (excluyendo cancelados)
+// ======= PEDIDOS ACTIVOS =======
 $stmt = $db->query("SELECT COUNT(*) as total FROM pedidos WHERE estado != 'cancelado'");
-$stats['pedidos'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+$stats['pedidos'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
-// CORRECCIÓN: Ventas del mes solo pagadas o enviadas
-$stmt = $db->query("SELECT SUM(total) as total FROM pedidos WHERE MONTH(fecha) = MONTH(CURRENT_DATE()) AND YEAR(fecha) = YEAR(CURRENT_DATE()) AND estado IN ('pagado', 'enviado')");
-$stats['ventas_mes'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
+// ======= PEDIDOS PENDIENTES =======
+$stmt = $db->query("SELECT COUNT(*) as total FROM pedidos WHERE estado = 'pendiente'");
+$stats['pendientes'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
-// Ventas del mes anterior para comparación (solo pagadas o enviadas)
-$stmt = $db->query("SELECT SUM(total) as total FROM pedidos WHERE MONTH(fecha) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH) AND YEAR(fecha) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH) AND estado IN ('pagado', 'enviado')");
-$ventas_mes_anterior = $stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
+// ======= VENTAS MES ACTUAL =======
+$stmt = $db->query("
+    SELECT SUM(total) AS total 
+    FROM pedidos 
+    WHERE EXTRACT(MONTH FROM fecha) = EXTRACT(MONTH FROM CURRENT_DATE)
+      AND EXTRACT(YEAR FROM fecha) = EXTRACT(YEAR FROM CURRENT_DATE)
+      AND estado IN ('pagado', 'enviado')
+");
+$stats['ventas_mes'] = (float)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
-// Calcular porcentaje de crecimiento
+// ======= VENTAS MES ANTERIOR =======
+$stmt = $db->query("
+    SELECT SUM(total) AS total 
+    FROM pedidos 
+    WHERE EXTRACT(MONTH FROM fecha) = EXTRACT(MONTH FROM (CURRENT_DATE - INTERVAL '1 month'))
+      AND EXTRACT(YEAR FROM fecha) = EXTRACT(YEAR FROM (CURRENT_DATE - INTERVAL '1 month'))
+      AND estado IN ('pagado', 'enviado')
+");
+$ventas_mes_anterior = (float)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
+
+// ======= CALCULAR CRECIMIENTO =======
 if ($ventas_mes_anterior > 0) {
     $stats['crecimiento'] = (($stats['ventas_mes'] - $ventas_mes_anterior) / $ventas_mes_anterior) * 100;
 } else {
-    $stats['crecimiento'] = $stats['ventas_mes'] > 0 ? 100 : 0;
+    $stats['crecimiento'] = 0;
 }
 
-// Pedidos pendientes
-$stmt = $db->query("SELECT COUNT(*) as total FROM pedidos WHERE estado = 'pendiente'");
-$stats['pendientes'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-
-// Obtener datos para los modales
-// Clientes activos
-$clientes_activos = $db->query("SELECT * FROM clientes WHERE estado = 1 ORDER BY fecha_registro DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
-
-// Productos activos
-$productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER BY fecha_registro DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
-
-// Pedidos activos
-$pedidos_activos = $db->query("
-    SELECT p.*, c.nombre as cliente 
-    FROM pedidos p 
-    JOIN clientes c ON p.id_cliente = c.id_cliente 
-    WHERE p.estado != 'cancelado'
-    ORDER BY p.fecha DESC LIMIT 10
-")->fetchAll(PDO::FETCH_ASSOC);
-
-// Ventas del mes detalladas
+// ======= VENTAS DETALLADAS DEL MES =======
 $ventas_detalladas = $db->query("
-    SELECT p.*, c.nombre as cliente 
-    FROM pedidos p 
-    JOIN clientes c ON p.id_cliente = c.id_cliente 
-    WHERE MONTH(p.fecha) = MONTH(CURRENT_DATE()) 
-    AND YEAR(p.fecha) = YEAR(CURRENT_DATE()) 
-    AND p.estado IN ('pagado', 'enviado')
+    SELECT p.*, c.nombre AS cliente
+    FROM pedidos p
+    JOIN clientes c ON p.id_cliente = c.id_cliente
+    WHERE EXTRACT(MONTH FROM p.fecha) = EXTRACT(MONTH FROM CURRENT_DATE)
+      AND EXTRACT(YEAR FROM p.fecha) = EXTRACT(YEAR FROM CURRENT_DATE)
+      AND p.estado IN ('pagado', 'enviado')
     ORDER BY p.fecha DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-// Ventas de los últimos 6 meses para el gráfico (solo pagadas o enviadas)
+// ======= VENTAS MENSUALES (6 MESES) =======
 $ventas_mensuales = $db->query("
-    SELECT YEAR(fecha) as año, MONTH(fecha) as mes, SUM(total) as total 
-    FROM pedidos 
-    WHERE fecha >= DATE_SUB(NOW(), INTERVAL 6 MONTH) 
-    AND estado IN ('pagado', 'enviado')
-    GROUP BY YEAR(fecha), MONTH(fecha) 
+    SELECT 
+        EXTRACT(YEAR FROM fecha) AS año, 
+        EXTRACT(MONTH FROM fecha) AS mes, 
+        SUM(total) AS total
+    FROM pedidos
+    WHERE fecha >= (NOW() - INTERVAL '6 months')
+      AND estado IN ('pagado', 'enviado')
+    GROUP BY año, mes
     ORDER BY año, mes
 ")->fetchAll(PDO::FETCH_ASSOC);
+
+// ======= CLIENTES, PEDIDOS Y PRODUCTOS ACTIVOS =======
+$clientes_activos = $db->query("SELECT * FROM clientes WHERE estado = 1 ORDER BY fecha_registro DESC")->fetchAll(PDO::FETCH_ASSOC);
+$pedidos_activos = $db->query("
+    SELECT p.*, c.nombre AS cliente
+    FROM pedidos p
+    JOIN clientes c ON p.id_cliente = c.id_cliente
+    WHERE p.estado != 'cancelado'
+    ORDER BY p.fecha DESC
+")->fetchAll(PDO::FETCH_ASSOC);
+$productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER BY fecha_registro DESC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -100,55 +110,7 @@ $ventas_mensuales = $db->query("
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<style>
-/* Forzar texto blanco en modales */
-.modal-body,
-.modal-body *:not(.text-muted):not(.text-success):not(.text-danger):not(.text-warning):not(.text-info) {
-    color: #d9d9d9 !important;
-}
 
-.modal-body .table,
-.modal-body .table * {
-    color: #d9d9d9 !important;
-}
-
-.modal-body .text-muted {
-    color: #a0a0a0 !important;
-}
-
-.modal-body .text-success {
-    color: #10b981 !important;
-}
-
-.modal-body .text-danger {
-    color: #ef4444 !important;
-}
-
-.modal-body .text-warning {
-    color: #f59e0b !important;
-}
-
-.modal-body .text-info {
-    color: #3b82f6 !important;
-}
-
-/* Cards con colores de fondo */
-.modal-body .card.bg-primary,
-.modal-body .card.bg-success, 
-.modal-body .card.bg-info,
-.modal-body .card.bg-warning,
-.modal-body .card.bg-danger {
-    color: white !important;
-}
-
-.modal-body .card.bg-primary *,
-.modal-body .card.bg-success *,
-.modal-body .card.bg-info *,
-.modal-body .card.bg-warning *,
-.modal-body .card.bg-danger * {
-    color: white !important;
-}
-</style>
 <body class="admin-dashboard" style="background: #121418 !important;">
     <?php include '../../includes/header.php'; ?>
     
