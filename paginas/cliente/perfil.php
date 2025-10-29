@@ -324,25 +324,21 @@ document.getElementById('inputFoto').addEventListener('change', function(e) {
         return;
     }
 
-    // Validar tamaño (2MB)
     if (file.size > 2 * 1024 * 1024) {
         alert('❌ El archivo es demasiado grande (máximo 2MB)');
         this.value = ''; // Limpiar el input
         return;
     }
 
-    // Mostrar preview
     const reader = new FileReader();
     reader.onload = function(e) {
         document.getElementById('foto-perfil-actual').src = e.target.result;
     };
     reader.readAsDataURL(file);
 
-    // Mostrar botón de subir
     document.getElementById('btnSubirFoto').style.display = 'block';
 });
 
-// Validación de contraseñas
 document.getElementById('formPassword')?.addEventListener('input', function() {
     const nueva = document.querySelector('input[name="nueva_password"]').value;
     const confirmar = document.querySelector('input[name="confirmar_password"]').value;
@@ -359,7 +355,6 @@ document.getElementById('formPassword')?.addEventListener('input', function() {
     }
 });
 
-// Prevenir envío del formulario de foto si no hay archivo
 document.getElementById('formFoto').addEventListener('submit', function(e) {
     const fileInput = document.getElementById('inputFoto');
     if (!fileInput.files.length) {

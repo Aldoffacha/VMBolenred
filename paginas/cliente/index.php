@@ -262,7 +262,7 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
                 </div>
             </div>
 
-            <!-- Carrusel de Amazon y eBay -->
+            <!-- Carrusel de Amazon y eBay - CON BOTONES GRANDES Y FUNCIONALIDAD COMPLETA -->
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="card shadow mb-4">
@@ -274,7 +274,7 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
                                 <i class="fas fa-plus me-1"></i>Agregar Producto Externo
                             </button>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body position-relative">
                             <?php if (count($productos_externos) > 0): ?>
                             <div id="carouselExternos" class="carousel slide" data-bs-ride="carousel">
                                 <div class="carousel-inner">
@@ -318,8 +318,9 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
                                                                 <strong class="text-success">$<?php echo number_format($cotizacion['total'], 2); ?></strong>
                                                             </div>
                                                             <div class="d-grid gap-2">
+                                                                <!-- BOTÓN CORREGIDO - onclick con parámetros correctos -->
                                                                 <button class="btn btn-<?php echo $producto['plataforma'] === 'amazon' ? 'warning' : 'info'; ?> btn-sm" 
-                                                                        onclick="mostrarModalCarrito('<?php echo $producto['id_producto']; ?>', '<?php echo htmlspecialchars($producto['nombre']); ?>', <?php echo $producto['precio']; ?>, '<?php echo $producto['imagen']; ?>', <?php echo $producto['stock']; ?>, '<?php echo $producto['plataforma']; ?>', '<?php echo $producto['enlace']; ?>')">
+                                                                        onclick="mostrarModalCarrito('<?php echo $producto['id_producto']; ?>', '<?php echo htmlspecialchars(addslashes($producto['nombre'])); ?>', <?php echo $producto['precio']; ?>, '<?php echo $producto['imagen']; ?>', <?php echo $producto['stock']; ?>, '<?php echo $producto['plataforma']; ?>', '<?php echo $producto['enlace']; ?>')">
                                                                     <i class="fas fa-cart-plus me-1"></i>Cotizar y Agregar
                                                                 </button>
                                                                 <a href="<?php echo $producto['enlace']; ?>" target="_blank" class="btn btn-outline-dark btn-sm">
@@ -337,18 +338,19 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
                                 </div>
                                 
                                 <?php if (count($externos_chunks) > 1): ?>
-                                <button class="carousel-control-prev" type="button" data-bs-target="#carouselExternos" data-bs-slide="prev">
-                                    <span class="carousel-control-prev-icon bg-warning rounded-circle" aria-hidden="true"></span>
+                                <!-- BOTONES GRANDES Y VISIBLES -->
+                                <button class="carousel-control-prev carousel-btn-big" type="button" data-bs-target="#carouselExternos" data-bs-slide="prev">
+                                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                                     <span class="visually-hidden">Anterior</span>
                                 </button>
-                                <button class="carousel-control-next" type="button" data-bs-target="#carouselExternos" data-bs-slide="next">
-                                    <span class="carousel-control-next-icon bg-warning rounded-circle" aria-hidden="true"></span>
+                                <button class="carousel-control-next carousel-btn-big" type="button" data-bs-target="#carouselExternos" data-bs-slide="next">
+                                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
                                     <span class="visually-hidden">Siguiente</span>
                                 </button>
                                 <?php endif; ?>
                             </div>
                             
-                            <!-- Indicadores del carrusel -->
+                            <!-- Indicadores del carrusel (opcionales) -->
                             <?php if (count($externos_chunks) > 1): ?>
                             <div class="text-center mt-3">
                                 <?php for ($i = 0; $i < count($externos_chunks); $i++): ?>
@@ -374,7 +376,7 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
                 </div>
             </div>
 
-            <!-- Carruseles Individuales por Categoría -->
+            <!-- Carruseles Individuales por Categoría - CON BOTONES GRANDES Y FUNCIONALIDAD COMPLETA -->
             <div class="row mb-4">
                 <div class="col-12">
                     <?php foreach ($productos_por_categoria as $categoria_key => $categoria_data): 
@@ -391,10 +393,11 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
                                 Ver Todos <i class="fas fa-arrow-right ms-1"></i>
                             </a>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body position-relative">
                             <?php if (count($productos_categoria) > 0): ?>
                             <div class="position-relative">
-                                <div class="categoria-carousel" id="carousel-<?php echo $categoria_key; ?>">
+                                <!-- ESTRUCTURA CORREGIDA: agregar class="carousel slide" y data-bs-ride -->
+                                <div id="carousel-<?php echo $categoria_key; ?>" class="carousel slide" data-bs-ride="carousel">
                                     <div class="carousel-inner">
                                         <?php 
                                         // Dividir productos en grupos de 4 para el carrusel
@@ -446,8 +449,9 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
                                                                     <small class="text-muted">Total con importación:</small>
                                                                     <strong class="text-success">$<?php echo number_format($cotizacion['total'], 2); ?></strong>
                                                                 </div>
+                                                                <!-- BOTÓN CORREGIDO - onclick con parámetros correctos -->
                                                                 <button class="btn btn-<?php echo $categoria_info['color']; ?> btn-sm w-100" 
-                                                                        onclick="mostrarModalCarrito(<?php echo $producto['id_producto']; ?>, '<?php echo htmlspecialchars($producto['nombre']); ?>', <?php echo $producto['precio']; ?>, '<?php echo $imagen_url; ?>', <?php echo $producto['stock']; ?>, 'local')">
+                                                                        onclick="mostrarModalCarrito(<?php echo $producto['id_producto']; ?>, '<?php echo htmlspecialchars(addslashes($producto['nombre'])); ?>', <?php echo $producto['precio']; ?>, '<?php echo $imagen_url; ?>', <?php echo $producto['stock']; ?>, 'local')">
                                                                     <i class="fas fa-cart-plus me-1"></i>Agregar
                                                                 </button>
                                                             </div>
@@ -461,18 +465,19 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
                                     </div>
                                     
                                     <?php if (count($productos_chunks) > 1): ?>
-                                    <button class="carousel-control-prev" type="button" data-bs-target="#carousel-<?php echo $categoria_key; ?>" data-bs-slide="prev">
-                                        <span class="carousel-control-prev-icon bg-<?php echo $categoria_info['color']; ?> rounded-circle" aria-hidden="true"></span>
+                                    <!-- BOTONES GRANDES Y VISIBLES -->
+                                    <button class="carousel-control-prev carousel-btn-big" type="button" data-bs-target="#carousel-<?php echo $categoria_key; ?>" data-bs-slide="prev">
+                                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                                         <span class="visually-hidden">Anterior</span>
                                     </button>
-                                    <button class="carousel-control-next" type="button" data-bs-target="#carousel-<?php echo $categoria_key; ?>" data-bs-slide="next">
-                                        <span class="carousel-control-next-icon bg-<?php echo $categoria_info['color']; ?> rounded-circle" aria-hidden="true"></span>
+                                    <button class="carousel-control-next carousel-btn-big" type="button" data-bs-target="#carousel-<?php echo $categoria_key; ?>" data-bs-slide="next">
+                                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
                                         <span class="visually-hidden">Siguiente</span>
                                     </button>
                                     <?php endif; ?>
                                 </div>
                                 
-                                <!-- Indicadores del carrusel -->
+                                <!-- Indicadores del carrusel (opcionales) -->
                                 <?php if (count($productos_chunks) > 1): ?>
                                 <div class="text-center mt-3">
                                     <?php for ($i = 0; $i < count($productos_chunks); $i++): ?>
@@ -546,8 +551,9 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
                                                     <small class="text-muted">Costo total:</small>
                                                     <strong class="text-success">$<?php echo number_format($cotizacion['total'], 2); ?></strong>
                                                 </div>
+                                                <!-- BOTÓN CORREGIDO - onclick con parámetros correctos -->
                                                 <button class="btn btn-primary btn-sm w-100" 
-                                                        onclick="mostrarModalCarrito(<?php echo $producto['id_producto']; ?>, '<?php echo htmlspecialchars($producto['nombre']); ?>', <?php echo $producto['precio']; ?>, '<?php echo $imagen_url; ?>', <?php echo $producto['stock']; ?>, 'local')">
+                                                        onclick="mostrarModalCarrito(<?php echo $producto['id_producto']; ?>, '<?php echo htmlspecialchars(addslashes($producto['nombre'])); ?>', <?php echo $producto['precio']; ?>, '<?php echo $imagen_url; ?>', <?php echo $producto['stock']; ?>, 'local')">
                                                     🛒 Agregar al Carrito
                                                 </button>
                                             </div>
@@ -1069,27 +1075,30 @@ function mostrarSeguimiento(idPedido) {
     alert(`Seguimiento del pedido #VM${idPedido}\n\nEsta funcionalidad estará disponible pronto.`);
 }
 
+// FUNCIÓN CORREGIDA - Ahora maneja correctamente todos los parámetros
 function mostrarModalCarrito(id, nombre, precio, imagen, stock, plataforma, enlace = null) {
+    console.log('Mostrando modal para producto:', {id, nombre, precio, plataforma});
+    
     productoActual = id;
-    precioUnitario = precio;
+    precioUnitario = parseFloat(precio);
     plataformaActual = plataforma;
     
     // Llenar datos del modal
     document.getElementById('modalImagenProducto').src = imagen;
     document.getElementById('modalNombreProducto').textContent = nombre;
-    document.getElementById('modalPrecioProducto').textContent = `$${precio.toFixed(2)}`;
+    document.getElementById('modalPrecioProducto').textContent = `$${precioUnitario.toFixed(2)}`;
     document.getElementById('modalStockProducto').textContent = `${stock} unidades disponibles`;
     
     // Mostrar plataforma
     const plataformaText = {
         'amazon': 'Amazon',
-        'ebay': 'eBay',
+        'ebay': 'eBay', 
         'local': 'Tienda Local'
     }[plataforma] || 'Local';
     
     const badgeClass = {
         'amazon': 'bg-warning',
-        'ebay': 'bg-info', 
+        'ebay': 'bg-info',
         'local': 'bg-success'
     }[plataforma] || 'bg-secondary';
     
@@ -1099,7 +1108,7 @@ function mostrarModalCarrito(id, nombre, precio, imagen, stock, plataforma, enla
     
     // Si hay enlace externo, mostrar botón
     if (enlace) {
-        badgeElement.innerHTML += ` <a href="${enlace}" target="_blank" class="text-white"><i class="fas fa-external-link-alt"></i></a>`;
+        badgeElement.innerHTML = `${plataformaText} <a href="${enlace}" target="_blank" class="text-white ms-1"><i class="fas fa-external-link-alt"></i></a>`;
     }
     
     // Reset cantidad
@@ -1386,12 +1395,28 @@ function calcularCotizacion() {
     `;
 }
 
-// Inicializar
+// INICIALIZACIÓN CORREGIDA DE LOS CARRUSELES
 document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar todos los carruseles manualmente
+    const carousels = document.querySelectorAll('.carousel');
+    carousels.forEach(carousel => {
+        // Inicializar cada carrusel
+        new bootstrap.Carousel(carousel, {
+            interval: 5000, // Cambiar cada 5 segundos
+            wrap: true,
+            touch: true
+        });
+    });
+    
+    console.log('Carruseles inicializados:', carousels.length);
+    
     actualizarContadorCarrito();
     
     // Actualizar resumen cuando cambia la cantidad manualmente
-    document.getElementById('cantidadProducto').addEventListener('input', calcularResumen);
+    const cantidadInput = document.getElementById('cantidadProducto');
+    if (cantidadInput) {
+        cantidadInput.addEventListener('input', calcularResumen);
+    }
     
     // Agregar efecto hover a las tarjetas clickeables
     document.querySelectorAll('.clickable-card').forEach(card => {
@@ -1407,6 +1432,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+/* ESTILOS MEJORADOS PARA BOTONES GRANDES DE CARRUSEL */
 .clickable-card:hover {
     box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
 }
@@ -1429,29 +1455,52 @@ document.addEventListener('DOMContentLoaded', function() {
     overflow: hidden;
 }
 
-.carousel-control-prev,
-.carousel-control-next {
-    width: 40px;
-    height: 40px;
-    top: 50%;
-    transform: translateY(-50%);
-    opacity: 0.8;
+/* BOTONES GRANDES Y VISIBLES - MEJORADOS */
+.carousel-btn-big {
+    width: 60px !important;
+    height: 60px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    opacity: 0.9 !important;
+    background: rgba(0,0,0,0.7) !important;
+    border-radius: 50% !important;
+    transition: all 0.3s ease !important;
+    border: 3px solid white !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
 }
 
-.carousel-control-prev {
-    left: -20px;
+.carousel-btn-big:hover {
+    opacity: 1 !important;
+    background: rgba(0,0,0,0.9) !important;
+    transform: translateY(-50%) scale(1.1) !important;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4) !important;
 }
 
-.carousel-control-next {
-    right: -20px;
+.carousel-control-prev.carousel-btn-big {
+    left: 15px !important;
+}
+
+.carousel-control-next.carousel-btn-big {
+    right: 15px !important;
 }
 
 .carousel-control-prev-icon,
 .carousel-control-next-icon {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    padding: 10px;
+    width: 30px !important;
+    height: 30px !important;
+    background-size: 30px 30px !important;
+    filter: brightness(0) invert(1) !important;
+}
+
+/* Efecto de brillo en hover */
+.carousel-btn-big:hover .carousel-control-prev-icon,
+.carousel-btn-big:hover .carousel-control-next-icon {
+    filter: brightness(0) invert(1) drop-shadow(0 0 3px rgba(255,255,255,0.5)) !important;
+}
+
+.carousel-inner {
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .bg-gradient-primary {
@@ -1466,18 +1515,45 @@ document.addEventListener('DOMContentLoaded', function() {
     background: linear-gradient(135deg, #f6c23e 0%, #dda20a 100%) !important;
 }
 
-/* Mejoras responsive */
+/* Mejoras responsive para botones grandes */
 @media (max-width: 768px) {
-    .carousel-control-prev {
-        left: -10px;
+    .carousel-btn-big {
+        width: 50px !important;
+        height: 50px !important;
     }
     
-    .carousel-control-next {
-        right: -10px;
+    .carousel-control-prev.carousel-btn-big {
+        left: 10px !important;
+    }
+    
+    .carousel-control-next.carousel-btn-big {
+        right: 10px !important;
+    }
+    
+    .carousel-control-prev-icon,
+    .carousel-control-next-icon {
+        width: 25px !important;
+        height: 25px !important;
+        background-size: 25px 25px !important;
     }
     
     .product-card {
         margin-bottom: 1rem;
+    }
+}
+
+/* Para pantallas muy pequeñas */
+@media (max-width: 576px) {
+    .carousel-btn-big {
+        width: 45px !important;
+        height: 45px !important;
+    }
+    
+    .carousel-control-prev-icon,
+    .carousel-control-next-icon {
+        width: 20px !important;
+        height: 20px !important;
+        background-size: 20px 20px !important;
     }
 }
 
@@ -1500,6 +1576,16 @@ document.addEventListener('DOMContentLoaded', function() {
 .g-3 {
     --bs-gutter-x: 1rem;
     --bs-gutter-y: 1rem;
+}
+
+/* Asegurar que los botones de los indicadores sean clickeables */
+.btn-sm[data-bs-target] {
+    cursor: pointer !important;
+}
+
+/* Posicionamiento relativo para el contenedor del carrusel */
+.card-body.position-relative {
+    position: relative;
 }
 </style>
 
