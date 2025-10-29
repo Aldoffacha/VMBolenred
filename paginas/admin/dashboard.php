@@ -63,7 +63,7 @@ if ($ventas_mes_anterior > 0) {
     $stats['crecimiento'] = 0;
 }
 
-// ======= VENTAS DETALLADAS DEL MES =======
+// ======= VENTAS DETALLADAS DEL MES (LIMITADO A 5) =======
 $ventas_detalladas = $db->query("
     SELECT p.*, c.nombre AS cliente
     FROM pedidos p
@@ -72,6 +72,7 @@ $ventas_detalladas = $db->query("
       AND EXTRACT(YEAR FROM p.fecha) = EXTRACT(YEAR FROM CURRENT_DATE)
       AND p.estado IN ('pagado', 'enviado')
     ORDER BY p.fecha DESC
+    LIMIT 5
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 // ======= VENTAS MENSUALES (6 MESES) =======
@@ -87,16 +88,26 @@ $ventas_mensuales = $db->query("
     ORDER BY año, mes
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-// ======= CLIENTES, PEDIDOS Y PRODUCTOS ACTIVOS =======
-$clientes_activos = $db->query("SELECT * FROM clientes WHERE estado = 1 ORDER BY fecha_registro DESC")->fetchAll(PDO::FETCH_ASSOC);
+// ======= CLIENTES, PEDIDOS Y PRODUCTOS ACTIVOS (LIMITADOS A 5) =======
+$clientes_activos = $db->query("SELECT * FROM clientes WHERE estado = 1 ORDER BY fecha_registro DESC LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
 $pedidos_activos = $db->query("
     SELECT p.*, c.nombre AS cliente
     FROM pedidos p
     JOIN clientes c ON p.id_cliente = c.id_cliente
     WHERE p.estado != 'cancelado'
     ORDER BY p.fecha DESC
+    LIMIT 5
 ")->fetchAll(PDO::FETCH_ASSOC);
-$productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER BY fecha_registro DESC")->fetchAll(PDO::FETCH_ASSOC);
+$productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER BY fecha_registro DESC LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
+
+// ======= PEDIDOS RECIENTES PARA LA TABLA =======
+$pedidos_recientes = $db->query("
+    SELECT p.*, c.nombre as cliente 
+    FROM pedidos p 
+    JOIN clientes c ON p.id_cliente = c.id_cliente 
+    WHERE p.estado != 'cancelado'
+    ORDER BY p.fecha DESC LIMIT 10
+")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -135,7 +146,7 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                                         <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                             Clientes Activos</div>
                                         <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $stats['clientes']; ?></div>
-                                        <small class="text-muted">Haz click para ver detalles</small>
+                                        <small class="text-muted">Haz click para ver últimos 5</small>
                                     </div>
                                     <div class="col-auto">
                                         <i class="fas fa-users fa-2x text-gray-300"></i>
@@ -202,7 +213,7 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                                         <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                             Productos Activos</div>
                                         <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo $stats['productos']; ?></div>
-                                        <small class="text-muted">Haz click para ver detalles</small>
+                                        <small class="text-muted">Haz click para ver últimos 5</small>
                                     </div>
                                     <div class="col-auto">
                                         <i class="fas fa-box fa-2x text-gray-300"></i>
@@ -213,74 +224,152 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                     </div>
                 </div>
 
-                <!-- Gráficos -->
+                <!-- Contenido principal reorganizado -->
                 <div class="row">
-                    <div class="col-md-8">
+                    <!-- Columna izquierda - Pedidos recientes y Ventas mensuales -->
+                    <div class="col-lg-8">
+                        <!-- Pedidos Recientes - Siempre expandido -->
                         <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Ventas Mensuales (Últimos 6 meses)</h6>
+                            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fas fa-shopping-cart me-2"></i>Pedidos Recientes
+                                </h6>
+                                <a href="pedidos.php" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-external-link-alt me-1"></i>Ver Todos
+                                </a>
                             </div>
                             <div class="card-body">
-                                <canvas id="salesChart" height="100"></canvas>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" width="100%" cellspacing="0">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Cliente</th>
+                                                <th>Total</th>
+                                                <th>Estado</th>
+                                                <th>Fecha</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($pedidos_recientes as $pedido): 
+                                                $badgeClass = [
+                                                    'pendiente' => 'warning',
+                                                    'pagado' => 'info',
+                                                    'enviado' => 'success',
+                                                    'cancelado' => 'danger'
+                                                ][$pedido['estado']] ?? 'secondary';
+                                            ?>
+                                            <tr>
+                                                <td>#<?php echo $pedido['id_pedido']; ?></td>
+                                                <td><?php echo htmlspecialchars($pedido['cliente']); ?></td>
+                                                <td>$<?php echo number_format($pedido['total'], 2); ?></td>
+                                                <td><span class="badge bg-<?php echo $badgeClass; ?>"><?php echo ucfirst($pedido['estado']); ?></span></td>
+                                                <td><?php echo date('d/m/Y H:i', strtotime($pedido['fecha'])); ?></td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Estado de Pedidos</h6>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="ordersChart" height="200"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Actividad reciente -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Pedidos Recientes</h6>
+                        <!-- Ventas Mensuales - Siempre expandido -->
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fas fa-chart-line me-2"></i>Ventas Mensuales (Últimos 6 meses)
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="salesChart" height="80"></canvas>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Cliente</th>
-                                        <th>Total</th>
-                                        <th>Estado</th>
-                                        <th>Fecha</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+
+                    <!-- Columna derecha - Estado de pedidos -->
+                    <div class="col-lg-4">
+                        <!-- Estado de Pedidos - Siempre expandido -->
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fas fa-chart-pie me-2"></i>Estado de Pedidos
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="ordersChart" height="250"></canvas>
+                                <div class="mt-3 text-center">
                                     <?php
-                                    $stmt = $db->query("
-                                        SELECT p.*, c.nombre as cliente 
-                                        FROM pedidos p 
-                                        JOIN clientes c ON p.id_cliente = c.id_cliente 
-                                        WHERE p.estado != 'cancelado'
-                                        ORDER BY p.fecha DESC LIMIT 10
-                                    ");
-                                    while ($pedido = $stmt->fetch(PDO::FETCH_ASSOC)):
-                                        $badgeClass = [
-                                            'pendiente' => 'warning',
-                                            'pagado' => 'info',
-                                            'enviado' => 'success',
-                                            'cancelado' => 'danger'
-                                        ][$pedido['estado']] ?? 'secondary';
+                                    $total_pedidos = $db->query("SELECT COUNT(*) as total FROM pedidos WHERE estado != 'cancelado'")->fetch(PDO::FETCH_ASSOC)['total'];
+                                    $pendientes = $db->query("SELECT COUNT(*) as total FROM pedidos WHERE estado = 'pendiente'")->fetch(PDO::FETCH_ASSOC)['total'];
+                                    $pagados = $db->query("SELECT COUNT(*) as total FROM pedidos WHERE estado = 'pagado'")->fetch(PDO::FETCH_ASSOC)['total'];
+                                    $enviados = $db->query("SELECT COUNT(*) as total FROM pedidos WHERE estado = 'enviado'")->fetch(PDO::FETCH_ASSOC)['total'];
                                     ?>
-                                    <tr>
-                                        <td>#<?php echo $pedido['id_pedido']; ?></td>
-                                        <td><?php echo htmlspecialchars($pedido['cliente']); ?></td>
-                                        <td>$<?php echo number_format($pedido['total'], 2); ?></td>
-                                        <td><span class="badge bg-<?php echo $badgeClass; ?>"><?php echo ucfirst($pedido['estado']); ?></span></td>
-                                        <td><?php echo date('d/m/Y H:i', strtotime($pedido['fecha'])); ?></td>
-                                    </tr>
-                                    <?php endwhile; ?>
-                                </tbody>
-                            </table>
+                                    <div class="row text-center">
+                                        <div class="col-4">
+                                            <div class="text-warning">
+                                                <i class="fas fa-clock fa-2x mb-2"></i>
+                                                <h5><?php echo $pendientes; ?></h5>
+                                                <small>Pendientes</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="text-info">
+                                                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                                <h5><?php echo $pagados; ?></h5>
+                                                <small>Pagados</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="text-success">
+                                                <i class="fas fa-shipping-fast fa-2x mb-2"></i>
+                                                <h5><?php echo $enviados; ?></h5>
+                                                <small>Enviados</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Resumen rápido -->
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fas fa-tachometer-alt me-2"></i>Resumen Rápido
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-6 mb-3">
+                                        <div class="border rounded p-3">
+                                            <i class="fas fa-dollar-sign text-success fa-2x mb-2"></i>
+                                            <h5>$<?php echo number_format($stats['ventas_mes'], 0); ?></h5>
+                                            <small class="text-muted">Ventas Mes</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 mb-3">
+                                        <div class="border rounded p-3">
+                                            <i class="fas fa-shopping-cart text-info fa-2x mb-2"></i>
+                                            <h5><?php echo $total_pedidos; ?></h5>
+                                            <small class="text-muted">Total Pedidos</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="border rounded p-3">
+                                            <i class="fas fa-users text-primary fa-2x mb-2"></i>
+                                            <h5><?php echo $stats['clientes']; ?></h5>
+                                            <small class="text-muted">Clientes</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="border rounded p-3">
+                                            <i class="fas fa-box text-warning fa-2x mb-2"></i>
+                                            <h5><?php echo $stats['productos']; ?></h5>
+                                            <small class="text-muted">Productos</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -290,14 +379,17 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
 
     <!-- Modal para Clientes Activos -->
     <div class="modal fade" id="modalClientes" tabindex="-1">
-        <div class="modal-dialog modal-xl">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">👥 Clientes Activos</h5>
+                    <h5 class="modal-title">👥 Últimos 5 Clientes Activos</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <?php if (!empty($clientes_activos)): ?>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Mostrando los últimos 5 clientes registrados
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
@@ -307,7 +399,6 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                                         <th>Email</th>
                                         <th>Teléfono</th>
                                         <th>Fecha Registro</th>
-                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -318,11 +409,6 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                                         <td><?php echo htmlspecialchars($cliente['correo']); ?></td>
                                         <td><?php echo htmlspecialchars($cliente['telefono'] ?? 'No especificado'); ?></td>
                                         <td><?php echo date('d/m/Y', strtotime($cliente['fecha_registro'])); ?></td>
-                                        <td>
-                                            <a href="usuarios.php?accion=editar&id=<?php echo $cliente['id_cliente']; ?>" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                        </td>
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -338,7 +424,7 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <a href="usuarios.php" class="btn btn-primary">Gestionar Clientes</a>
+                    <a href="usuarios.php" class="btn btn-primary">Gestionar Todos los Clientes</a>
                 </div>
             </div>
         </div>
@@ -346,10 +432,10 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
 
     <!-- Modal para Ventas del Mes -->
     <div class="modal fade" id="modalVentas" tabindex="-1">
-        <div class="modal-dialog modal-xl">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">💰 Ventas del Mes</h5>
+                    <h5 class="modal-title">💰 Últimas 5 Ventas del Mes</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -358,7 +444,7 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                             <div class="card bg-primary text-white">
                                 <div class="card-body text-center">
                                     <h4>$<?php echo number_format($stats['ventas_mes'], 2); ?></h4>
-                                    <p class="mb-0">Total Ventas Mes Actual</p>
+                                    <p class="mb-0">Total Ventas Mes</p>
                                 </div>
                             </div>
                         </div>
@@ -366,7 +452,7 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                             <div class="card bg-info text-white">
                                 <div class="card-body text-center">
                                     <h4>$<?php echo number_format($ventas_mes_anterior, 2); ?></h4>
-                                    <p class="mb-0">Ventas Mes Anterior</p>
+                                    <p class="mb-0">Mes Anterior</p>
                                 </div>
                             </div>
                         </div>
@@ -381,6 +467,9 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                     </div>
 
                     <?php if (!empty($ventas_detalladas)): ?>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Mostrando las últimas 5 ventas del mes actual
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
@@ -429,10 +518,10 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
 
     <!-- Modal para Pedidos Activos -->
     <div class="modal fade" id="modalPedidos" tabindex="-1">
-        <div class="modal-dialog modal-xl">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">📦 Pedidos Activos</h5>
+                    <h5 class="modal-title">📦 Últimos 5 Pedidos Activos</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -472,6 +561,9 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                     </div>
 
                     <?php if (!empty($pedidos_activos)): ?>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Mostrando los últimos 5 pedidos activos
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
@@ -481,7 +573,6 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                                         <th>Total</th>
                                         <th>Estado</th>
                                         <th>Fecha</th>
-                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -498,11 +589,6 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                                         <td>$<?php echo number_format($pedido['total'], 2); ?></td>
                                         <td><span class="badge bg-<?php echo $badgeClass; ?>"><?php echo ucfirst($pedido['estado']); ?></span></td>
                                         <td><?php echo date('d/m/Y H:i', strtotime($pedido['fecha'])); ?></td>
-                                        <td>
-                                            <a href="pedidos.php?accion=ver&id=<?php echo $pedido['id_pedido']; ?>" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                        </td>
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -518,7 +604,7 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <a href="pedidos.php" class="btn btn-primary">Gestionar Pedidos</a>
+                    <a href="pedidos.php" class="btn btn-primary">Gestionar Todos los Pedidos</a>
                 </div>
             </div>
         </div>
@@ -526,14 +612,17 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
 
     <!-- Modal para Productos Activos -->
     <div class="modal fade" id="modalProductos" tabindex="-1">
-        <div class="modal-dialog modal-xl">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">📦 Productos Activos</h5>
+                    <h5 class="modal-title">📦 Últimos 5 Productos Activos</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <?php if (!empty($productos_activos)): ?>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Mostrando los últimos 5 productos registrados
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
@@ -544,7 +633,6 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                                         <th>Precio</th>
                                         <th>Stock</th>
                                         <th>Fecha Registro</th>
-                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -572,11 +660,6 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                                             </span>
                                         </td>
                                         <td><?php echo date('d/m/Y', strtotime($producto['fecha_registro'])); ?></td>
-                                        <td>
-                                            <a href="productos.php?accion=editar&id=<?php echo $producto['id_producto']; ?>" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                        </td>
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -592,7 +675,7 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <a href="productos.php" class="btn btn-primary">Gestionar Productos</a>
+                    <a href="productos.php" class="btn btn-primary">Gestionar Todos los Productos</a>
                 </div>
             </div>
         </div>
@@ -691,7 +774,7 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
                         position: 'bottom'
                     }
                 },
-                cutout: '70%'
+                cutout: '60%'
             }
         });
 
@@ -712,6 +795,10 @@ $productos_activos = $db->query("SELECT * FROM productos WHERE estado = 1 ORDER 
     <style>
     .clickable-card:hover {
         box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+    }
+    .card-header {
+        background: rgba(255,255,255,0.05) !important;
+        border-bottom: 1px solid rgba(255,255,255,0.1) !important;
     }
     </style>
 </body>
