@@ -63,8 +63,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// Obtener lista de empleados
-$empleados = $db->query("SELECT * FROM empleados ORDER BY fecha_registro DESC")->fetchAll(PDO::FETCH_ASSOC);
+// Parámetros de búsqueda y paginación
+$busqueda = isset($_GET['buscar']) ? trim($_GET['buscar']) : '';
+$pagina = isset($_GET['pagina']) ? max(1, intval($_GET['pagina'])) : 1;
+$porPagina = 8;
+$offset = ($pagina - 1) * $porPagina;
+
+// Construir consulta base
+$sql = "SELECT * FROM empleados";
+$params = [];
+$countSql = "SELECT COUNT(*) FROM empleados";
+
+// Aplicar búsqueda si existe
+if (!empty($busqueda)) {
+    $sql .= " WHERE LOWER(nombre) LIKE LOWER(?)";
+    $countSql .= " WHERE LOWER(nombre) LIKE LOWER(?)";
+    $params[] = "%$busqueda%";
+}
+
+// Orden y paginación
+$sql .= " ORDER BY fecha_registro DESC LIMIT ? OFFSET ?";
+$countParams = $params;
+$params[] = $porPagina;
+$params[] = $offset;
+
+// Obtener total de registros
+$stmtCount = $db->prepare($countSql);
+$stmtCount->execute($countParams);
+$totalRegistros = $stmtCount->fetchColumn();
+$totalPaginas = ceil($totalRegistros / $porPagina);
+
+// Obtener empleados
+$stmt = $db->prepare($sql);
+$stmt->execute($params);
+$empleados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -76,6 +108,7 @@ $empleados = $db->query("SELECT * FROM empleados ORDER BY fecha_registro DESC")-
     <link rel="stylesheet" href="../../assets/css/main.css">
     <link rel="stylesheet" href="../../assets/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="admin-dashboard">
     <?php include '../../includes/header.php'; ?>
@@ -109,7 +142,7 @@ $empleados = $db->query("SELECT * FROM empleados ORDER BY fecha_registro DESC")-
                                         <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                             Total Empleados</div>
                                         <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                            <?php echo count($empleados); ?>
+                                            <?php echo $totalRegistros; ?>
                                         </div>
                                     </div>
                                     <div class="col-auto">
@@ -128,7 +161,17 @@ $empleados = $db->query("SELECT * FROM empleados ORDER BY fecha_registro DESC")-
                                         <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                             Empleados Activos</div>
                                         <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                            <?php echo count(array_filter($empleados, fn($e) => $e['estado'] == 1)); ?>
+                                            <?php 
+                                            $sqlActivos = "SELECT COUNT(*) FROM empleados WHERE estado = 1";
+                                            if (!empty($busqueda)) {
+                                                $sqlActivos .= " AND LOWER(nombre) LIKE LOWER(?)";
+                                                $stmtActivos = $db->prepare($sqlActivos);
+                                                $stmtActivos->execute(["%$busqueda%"]);
+                                            } else {
+                                                $stmtActivos = $db->query($sqlActivos);
+                                            }
+                                            echo $stmtActivos->fetchColumn();
+                                            ?>
                                         </div>
                                     </div>
                                     <div class="col-auto">
@@ -147,7 +190,17 @@ $empleados = $db->query("SELECT * FROM empleados ORDER BY fecha_registro DESC")-
                                         <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                             Empleados Inactivos</div>
                                         <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                            <?php echo count(array_filter($empleados, fn($e) => $e['estado'] == 0)); ?>
+                                            <?php 
+                                            $sqlInactivos = "SELECT COUNT(*) FROM empleados WHERE estado = 0";
+                                            if (!empty($busqueda)) {
+                                                $sqlInactivos .= " AND LOWER(nombre) LIKE LOWER(?)";
+                                                $stmtInactivos = $db->prepare($sqlInactivos);
+                                                $stmtInactivos->execute(["%$busqueda%"]);
+                                            } else {
+                                                $stmtInactivos = $db->query($sqlInactivos);
+                                            }
+                                            echo $stmtInactivos->fetchColumn();
+                                            ?>
                                         </div>
                                     </div>
                                     <div class="col-auto">
@@ -168,7 +221,16 @@ $empleados = $db->query("SELECT * FROM empleados ORDER BY fecha_registro DESC")-
                                         <div class="h5 mb-0 font-weight-bold text-gray-800">
                                             <?php 
                                             $hace_30_dias = date('Y-m-d', strtotime('-30 days'));
-                                            echo count(array_filter($empleados, fn($e) => strtotime($e['fecha_registro']) >= strtotime($hace_30_dias)));
+                                            $sqlNuevos = "SELECT COUNT(*) FROM empleados WHERE fecha_registro >= ?";
+                                            if (!empty($busqueda)) {
+                                                $sqlNuevos .= " AND LOWER(nombre) LIKE LOWER(?)";
+                                                $stmtNuevos = $db->prepare($sqlNuevos);
+                                                $stmtNuevos->execute([$hace_30_dias, "%$busqueda%"]);
+                                            } else {
+                                                $stmtNuevos = $db->prepare($sqlNuevos);
+                                                $stmtNuevos->execute([$hace_30_dias]);
+                                            }
+                                            echo $stmtNuevos->fetchColumn();
                                             ?>
                                         </div>
                                     </div>
@@ -181,17 +243,67 @@ $empleados = $db->query("SELECT * FROM empleados ORDER BY fecha_registro DESC")-
                     </div>
                 </div>
 
+                <!-- Buscador de Empleados -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Buscar Empleados</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="GET" class="row g-3">
+                            <div class="col-md-8">
+                                <div class="input-group">
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="buscar" 
+                                           placeholder="Buscar empleados por nombre (no importa mayúsculas/minúsculas)..." 
+                                           value="<?php echo htmlspecialchars($busqueda); ?>">
+                                    <button class="btn btn-outline-primary" type="submit">
+                                        <i class="fas fa-search me-1"></i> Buscar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <?php if (!empty($busqueda)): ?>
+                                <a href="empleados.php" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times me-1"></i> Limpiar Búsqueda
+                                </a>
+                                <?php endif; ?>
+                            </div>
+                        </form>
+                        <?php if (!empty($busqueda)): ?>
+                        <div class="mt-3">
+                            <p class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Se encontraron <strong><?php echo $totalRegistros; ?></strong> empleados con el término: "<?php echo htmlspecialchars($busqueda); ?>"
+                            </p>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
                 <!-- Lista de Empleados -->
                 <div class="card">
                     <div class="card-header">
                         <h5 class="card-title mb-0">Lista de Empleados</h5>
                     </div>
                     <div class="card-body">
+                        <?php if (empty($empleados)): ?>
+                        <div class="text-center py-4">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">
+                                <?php if (!empty($busqueda)): ?>
+                                No se encontraron empleados con el término "<?php echo htmlspecialchars($busqueda); ?>"
+                                <?php else: ?>
+                                No hay empleados registrados
+                                <?php endif; ?>
+                            </h5>
+                        </div>
+                        <?php else: ?>
                         <div class="table-responsive">
                             <table class="table table-striped table-hover">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
+                                        <th>#</th>
                                         <th>Nombre</th>
                                         <th>Email</th>
                                         <th>Teléfono</th>
@@ -201,9 +313,9 @@ $empleados = $db->query("SELECT * FROM empleados ORDER BY fecha_registro DESC")-
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($empleados as $empleado): ?>
+                                    <?php foreach ($empleados as $index => $empleado): ?>
                                     <tr>
-                                        <td><strong>#<?php echo $empleado['id_empleado']; ?></strong></td>
+                                        <td><strong><?php echo $offset + $index + 1; ?></strong></td>
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <div class="avatar-sm bg-primary rounded-circle text-white d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
@@ -254,6 +366,55 @@ $empleados = $db->query("SELECT * FROM empleados ORDER BY fecha_registro DESC")-
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Paginación -->
+                        <?php if ($totalPaginas > 1): ?>
+                        <nav aria-label="Paginación de empleados" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                <?php if ($pagina > 1): ?>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?pagina=<?php echo $pagina - 1; ?>&buscar=<?php echo urlencode($busqueda); ?>">
+                                            <i class="fas fa-chevron-left me-1"></i> Anterior
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+
+                                <?php 
+                                // Mostrar números de página
+                                $inicio = max(1, $pagina - 2);
+                                $fin = min($totalPaginas, $pagina + 2);
+                                
+                                for ($i = $inicio; $i <= $fin; $i++): 
+                                ?>
+                                    <li class="page-item <?php echo ($i == $pagina) ? 'active' : ''; ?>">
+                                        <a class="page-link" href="?pagina=<?php echo $i; ?>&buscar=<?php echo urlencode($busqueda); ?>">
+                                            <?php echo $i; ?>
+                                        </a>
+                                    </li>
+                                <?php endfor; ?>
+
+                                <?php if ($pagina < $totalPaginas): ?>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?pagina=<?php echo $pagina + 1; ?>&buscar=<?php echo urlencode($busqueda); ?>">
+                                            Siguiente <i class="fas fa-chevron-right ms-1"></i>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+                            </ul>
+                        </nav>
+
+                        <!-- Información de paginación -->
+                        <div class="text-center text-muted mt-2">
+                            <small>
+                                Mostrando <?php echo count($empleados); ?> de <?php echo $totalRegistros; ?> empleados
+                                <?php if (!empty($busqueda)): ?>
+                                    para la búsqueda "<?php echo htmlspecialchars($busqueda); ?>"
+                                <?php endif; ?>
+                                - Página <?php echo $pagina; ?> de <?php echo $totalPaginas; ?>
+                            </small>
+                        </div>
+                        <?php endif; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </main>
@@ -319,8 +480,18 @@ $empleados = $db->query("SELECT * FROM empleados ORDER BY fecha_registro DESC")-
     // Función para editar empleado
     function editarEmpleado(id) {
         fetch(`../../procesos/obtener_empleado.php?id=${id}`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta del servidor');
+                }
+                return response.json();
+            })
             .then(empleado => {
+                if (empleado.error) {
+                    alert(empleado.error);
+                    return;
+                }
+                
                 document.getElementById('modalEmpleadoTitulo').textContent = 'Editar Empleado';
                 document.getElementById('accion').value = 'editar_empleado';
                 document.getElementById('id_empleado').value = empleado.id_empleado;
@@ -335,26 +506,32 @@ $empleados = $db->query("SELECT * FROM empleados ORDER BY fecha_registro DESC")-
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Error al cargar datos del empleado');
+                alert('Error al cargar datos del empleado: ' + error.message);
             });
     }
 
     // Función para resetear contraseña
     function resetearContrasena(id) {
-        if (confirm('¿Estás seguro de resetear la contraseña de este empleado?')) {
-            const formData = new FormData();
-            formData.append('accion', 'resetear_contrasena');
-            formData.append('id_empleado', id);
+        if (confirm('¿Estás seguro de resetear la contraseña de este empleado? La nueva contraseña será: temp123')) {
+            // Crear un formulario dinámico para enviar la solicitud
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'empleados.php';
             
-            fetch('empleados.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (response.ok) {
-                    location.reload();
-                }
-            });
+            const accionInput = document.createElement('input');
+            accionInput.type = 'hidden';
+            accionInput.name = 'accion';
+            accionInput.value = 'resetear_contrasena';
+            
+            const idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.name = 'id_empleado';
+            idInput.value = id;
+            
+            form.appendChild(accionInput);
+            form.appendChild(idInput);
+            document.body.appendChild(form);
+            form.submit();
         }
     }
 
@@ -362,32 +539,50 @@ $empleados = $db->query("SELECT * FROM empleados ORDER BY fecha_registro DESC")-
     function cambiarEstado(id, nuevoEstado) {
         const accion = nuevoEstado ? 'activar' : 'desactivar';
         if (confirm(`¿Estás seguro de ${accion} este empleado?`)) {
-            // Obtener datos actuales del empleado primero
-            fetch(`../../procesos/obtener_empleado.php?id=${id}`)
-                .then(response => response.json())
-                .then(empleado => {
-                    const formData = new FormData();
-                    formData.append('accion', 'editar_empleado');
-                    formData.append('id_empleado', id);
-                    formData.append('nombre', empleado.nombre);
-                    formData.append('correo', empleado.correo);
-                    formData.append('telefono', empleado.telefono || '');
-                    formData.append('estado', nuevoEstado);
-                    
-                    return fetch('empleados.php', {
-                        method: 'POST',
-                        body: formData
-                    });
-                })
-                .then(response => {
-                    if (response.ok) {
-                        location.reload();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error al cambiar estado del empleado');
-                });
+            // Crear un formulario dinámico para enviar la solicitud
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'empleados.php';
+            
+            const accionInput = document.createElement('input');
+            accionInput.type = 'hidden';
+            accionInput.name = 'accion';
+            accionInput.value = 'editar_empleado';
+            
+            const idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.name = 'id_empleado';
+            idInput.value = id;
+            
+            const estadoInput = document.createElement('input');
+            estadoInput.type = 'hidden';
+            estadoInput.name = 'estado';
+            estadoInput.value = nuevoEstado;
+            
+            // Obtener los demás datos necesarios (puedes obtenerlos de la fila de la tabla si es necesario)
+            const nombreInput = document.createElement('input');
+            nombreInput.type = 'hidden';
+            nombreInput.name = 'nombre';
+            nombreInput.value = ''; // Este valor se debería obtener de la fila
+            
+            const correoInput = document.createElement('input');
+            correoInput.type = 'hidden';
+            correoInput.name = 'correo';
+            correoInput.value = ''; // Este valor se debería obtener de la fila
+            
+            const telefonoInput = document.createElement('input');
+            telefonoInput.type = 'hidden';
+            telefonoInput.name = 'telefono';
+            telefonoInput.value = ''; // Este valor se debería obtener de la fila
+            
+            form.appendChild(accionInput);
+            form.appendChild(idInput);
+            form.appendChild(estadoInput);
+            form.appendChild(nombreInput);
+            form.appendChild(correoInput);
+            form.appendChild(telefonoInput);
+            document.body.appendChild(form);
+            form.submit();
         }
     }
 

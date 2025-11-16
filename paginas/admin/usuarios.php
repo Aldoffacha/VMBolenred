@@ -47,8 +47,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Parámetros de búsqueda y paginación
+$busqueda = isset($_GET['busqueda']) ? trim($_GET['busqueda']) : '';
+$pagina = isset($_GET['pagina']) ? max(1, intval($_GET['pagina'])) : 1;
+$porPagina = 8;
+$offset = ($pagina - 1) * $porPagina;
+
+// Construir consulta base
+$sql = "SELECT * FROM clientes WHERE estado = 1";
+$params = [];
+$countSql = "SELECT COUNT(*) FROM clientes WHERE estado = 1";
+
+// Aplicar búsqueda si existe
+if (!empty($busqueda)) {
+    $sql .= " AND LOWER(nombre) LIKE LOWER(?)";
+    $countSql .= " AND LOWER(nombre) LIKE LOWER(?)";
+    $params[] = "%$busqueda%";
+}
+
+// Orden y paginación
+$sql .= " ORDER BY id_cliente DESC LIMIT ? OFFSET ?";
+$countParams = $params;
+$params[] = $porPagina;
+$params[] = $offset;
+
+// Obtener total de registros
+$stmtCount = $db->prepare($countSql);
+$stmtCount->execute($countParams);
+$totalRegistros = $stmtCount->fetchColumn();
+$totalPaginas = ceil($totalRegistros / $porPagina);
+
 // Obtener clientes
-$clientes = $db->query("SELECT * FROM clientes WHERE estado = 1 ORDER BY id_cliente DESC")->fetchAll(PDO::FETCH_ASSOC);
+$stmt = $db->prepare($sql);
+$stmt->execute($params);
+$clientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -75,6 +107,20 @@ $clientes = $db->query("SELECT * FROM clientes WHERE estado = 1 ORDER BY id_clie
                     </button>
                 </div>
 
+                <!-- Buscador -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <form method="GET" class="d-flex">
+                            <input type="text" name="busqueda" class="form-control me-2" 
+                                   placeholder="Buscar por nombre..." value="<?php echo htmlspecialchars($busqueda); ?>">
+                            <button type="submit" class="btn btn-outline-primary">Buscar</button>
+                            <?php if (!empty($busqueda)): ?>
+                                <a href="?" class="btn btn-outline-secondary ms-2">Limpiar</a>
+                            <?php endif; ?>
+                        </form>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
                         <thead>
@@ -89,32 +135,71 @@ $clientes = $db->query("SELECT * FROM clientes WHERE estado = 1 ORDER BY id_clie
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($clientes as $cliente): ?>
-                            <tr>
-                                <td><?php echo $cliente['id_cliente']; ?></td>
-                                <td><?php echo htmlspecialchars($cliente['nombre']); ?></td>
-                                <td><?php echo htmlspecialchars($cliente['correo']); ?></td>
-                                <td><?php echo htmlspecialchars($cliente['telefono']); ?></td>
-                                <td><?php echo htmlspecialchars($cliente['direccion']); ?></td>
-                                <td><?php echo date('d/m/Y', strtotime($cliente['fecha_registro'])); ?></td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary btn-editar" 
-                                            data-id="<?php echo $cliente['id_cliente']; ?>"
-                                            data-nombre="<?php echo htmlspecialchars($cliente['nombre']); ?>"
-                                            data-correo="<?php echo htmlspecialchars($cliente['correo']); ?>"
-                                            data-telefono="<?php echo htmlspecialchars($cliente['telefono']); ?>"
-                                            data-direccion="<?php echo htmlspecialchars($cliente['direccion']); ?>">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger btn-eliminar" 
-                                            data-id="<?php echo $cliente['id_cliente']; ?>">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
+                            <?php if (empty($clientes)): ?>
+                                <tr>
+                                    <td colspan="7" class="text-center">No se encontraron usuarios</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($clientes as $cliente): ?>
+                                <tr>
+                                    <td><?php echo $cliente['id_cliente']; ?></td>
+                                    <td><?php echo htmlspecialchars($cliente['nombre']); ?></td>
+                                    <td><?php echo htmlspecialchars($cliente['correo']); ?></td>
+                                    <td><?php echo htmlspecialchars($cliente['telefono']); ?></td>
+                                    <td><?php echo htmlspecialchars($cliente['direccion']); ?></td>
+                                    <td><?php echo date('d/m/Y', strtotime($cliente['fecha_registro'])); ?></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary btn-editar" 
+                                                data-id="<?php echo $cliente['id_cliente']; ?>"
+                                                data-nombre="<?php echo htmlspecialchars($cliente['nombre']); ?>"
+                                                data-correo="<?php echo htmlspecialchars($cliente['correo']); ?>"
+                                                data-telefono="<?php echo htmlspecialchars($cliente['telefono']); ?>"
+                                                data-direccion="<?php echo htmlspecialchars($cliente['direccion']); ?>">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger btn-eliminar" 
+                                                data-id="<?php echo $cliente['id_cliente']; ?>">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Paginación -->
+                <?php if ($totalPaginas > 1): ?>
+                <nav aria-label="Paginación de usuarios">
+                    <ul class="pagination justify-content-center">
+                        <?php if ($pagina > 1): ?>
+                            <li class="page-item">
+                                <a class="page-link" href="?pagina=<?php echo $pagina - 1; ?>&busqueda=<?php echo urlencode($busqueda); ?>">Anterior</a>
+                            </li>
+                        <?php endif; ?>
+
+                        <?php for ($i = 1; $i <= $totalPaginas; $i++): ?>
+                            <li class="page-item <?php echo ($i == $pagina) ? 'active' : ''; ?>">
+                                <a class="page-link" href="?pagina=<?php echo $i; ?>&busqueda=<?php echo urlencode($busqueda); ?>"><?php echo $i; ?></a>
+                            </li>
+                        <?php endfor; ?>
+
+                        <?php if ($pagina < $totalPaginas): ?>
+                            <li class="page-item">
+                                <a class="page-link" href="?pagina=<?php echo $pagina + 1; ?>&busqueda=<?php echo urlencode($busqueda); ?>">Siguiente</a>
+                            </li>
+                        <?php endif; ?>
+                    </ul>
+                </nav>
+                <?php endif; ?>
+
+                <!-- Información de paginación -->
+                <div class="text-center text-muted">
+                    Mostrando <?php echo count($clientes); ?> de <?php echo $totalRegistros; ?> usuarios
+                    <?php if (!empty($busqueda)): ?>
+                        para la búsqueda "<?php echo htmlspecialchars($busqueda); ?>"
+                    <?php endif; ?>
                 </div>
             </main>
         </div>
