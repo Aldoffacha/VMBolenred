@@ -66,9 +66,11 @@ $query = "SELECT * FROM productos WHERE estado = 1";
 $params = [];
 
 if (!empty($busqueda)) {
-    $query .= " AND (nombre LIKE ? OR descripcion LIKE ?)";
-    $params[] = "%$busqueda%";
-    $params[] = "%$busqueda%";
+    // BÚSQUEDA CASE-INSENSITIVE - CORREGIDO
+    $query .= " AND (LOWER(nombre) LIKE LOWER(?) OR LOWER(descripcion) LIKE LOWER(?))";
+    $searchTerm = "%$busqueda%";
+    $params[] = $searchTerm;
+    $params[] = $searchTerm;
 }
 
 if (!empty($categoria) && $categoria != 'todos') {
@@ -106,11 +108,15 @@ error_log("Productos externos: " . count($productos_externos));
 // Combinar productos - PRIMERO los locales, LUEGO los externos
 $productos = array_merge($productos_bd, $productos_externos);
 
-// Aplicar filtros a los productos combinados si es necesario
+// Aplicar filtros a los productos combinados si es necesario - CORREGIDO PARA SER CASE-INSENSITIVE
 if (!empty($busqueda)) {
-    $productos = array_filter($productos, function($producto) use ($busqueda) {
-        return stripos($producto['nombre'], $busqueda) !== false || 
-               stripos($producto['descripcion'] ?? '', $busqueda) !== false;
+    $busqueda_lower = strtolower($busqueda);
+    $productos = array_filter($productos, function($producto) use ($busqueda_lower) {
+        $nombre_lower = strtolower($producto['nombre']);
+        $descripcion_lower = strtolower($producto['descripcion'] ?? '');
+        
+        return strpos($nombre_lower, $busqueda_lower) !== false || 
+               strpos($descripcion_lower, $busqueda_lower) !== false;
     });
 }
 

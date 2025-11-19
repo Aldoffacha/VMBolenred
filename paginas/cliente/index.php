@@ -3,35 +3,166 @@ require_once '../../includes/config.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
 
-function calcularCostoImportacion($precio, $peso, $categoria) {
+// Función para obtener el tipo de cambio actual
+function obtenerTipoCambio() {
+    $tipo_cambio = 10.47; // Valor por defecto
+    
+    try {
+        // Intentar obtener el tipo de cambio de dolarboliviahoy.com
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => 5,
+                'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            ]
+        ]);
+        
+        $html = @file_get_contents('https://dolarboliviahoy.com/', false, $context);
+        
+        if ($html !== false) {
+            // Buscar el tipo de cambio en el HTML (patrón común)
+            if (preg_match('/Bs\.?\s*([0-9]+[.,][0-9]+)/', $html, $matches)) {
+                $tipo_cambio = floatval(str_replace(',', '.', $matches[1]));
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Error obteniendo tipo de cambio: " . $e->getMessage());
+    }
+    
+    return $tipo_cambio;
+}
+
+// Función para calcular costo de almacenamiento basado en dimensiones
+function calcularCostoAlmacen($largo, $ancho, $alto, $peso) {
+    // Tarifas en Bolivianos según las dimensiones
+    $tarifas = [
+        // [largo_min, largo_max, ancho_min, ancho_max, alto_min, alto_max, peso_max, costo_bs]
+        [20, 20, 15, 15, 1, 1, 100, 135],      // 20x15x1
+        [20, 20, 15, 15, 15, 15, 100, 180],    // 20x15x15
+        [25, 25, 15, 15, 15, 15, 100, 225],    // 25x15x15
+        [30, 30, 20, 20, 20, 20, 100, 270],    // 30x20x20
+        [35, 35, 20, 20, 20, 20, 100, 360],    // 35x20x20
+        [50, 50, 40, 40, 10, 10, 10, 450],     // 50x40x10 (hasta 10kg)
+        [50, 50, 40, 40, 10, 10, 100, 1350],   // 50x40x10 (más de 10kg)
+        [60, 60, 60, 60, 60, 60, 20, 1800],    // 60x60x60 (hasta 20kg)
+        [100, 100, 100, 100, 60, 60, 25, 2250], // 100x100x60 (hasta 25kg)
+        [150, 150, 100, 100, 100, 100, 30, 3150] // 150x100x100 (hasta 30kg)
+    ];
+    
+    // Buscar la tarifa que coincida con las dimensiones
+    foreach ($tarifas as $tarifa) {
+        list($l_min, $l_max, $a_min, $a_max, $h_min, $h_max, $p_max, $costo) = $tarifa;
+        
+        if ($largo >= $l_min && $largo <= $l_max &&
+            $ancho >= $a_min && $ancho <= $a_max &&
+            $alto >= $h_min && $alto <= $h_max &&
+            $peso <= $p_max) {
+            return $costo;
+        }
+    }
+    
+    // Si no encuentra tarifa específica, calcular por volumen aproximado
+    $volumen = $largo * $ancho * $alto;
+    if ($volumen <= 300) return 135;      // Hasta 300 cm³
+    if ($volumen <= 4500) return 180;     // Hasta 4500 cm³
+    if ($volumen <= 5625) return 225;     // Hasta 5625 cm³
+    if ($volumen <= 12000) return 270;    // Hasta 12000 cm³
+    if ($volumen <= 14000) return 360;    // Hasta 14000 cm³
+    if ($volumen <= 20000) return 450;    // Hasta 20000 cm³
+    if ($volumen <= 20000 && $peso > 10) return 1350;
+    if ($volumen <= 216000) return 1800;  // Hasta 216000 cm³
+    if ($volumen <= 600000) return 2250;  // Hasta 600000 cm³
+    return 3150; // Mayor a 600000 cm³
+}
+
+// Función principal de cálculo de importación
+function calcularCostoImportacion($precio, $peso, $categoria, $largo = 20, $ancho = 15, $alto = 1) {
+    $tipo_cambio = obtenerTipoCambio();
+    
     $impuestos = [
         'electronico' => 0.30, 'ropa' => 0.20, 'hogar' => 0.15, 
         'deportes' => 0.25, 'otros' => 0.18
     ];
     
-    $almacen = ['pequeno' => 10, 'mediano' => 25, 'grande' => 50, 'extra' => 80];
-    
+    // Calcular costos en dólares
     $impuesto = $impuestos[$categoria] ?? 0.18;
-    $flete_maritimo = max(15, $peso * 3);
+    $flete_maritimo = max(15, $peso * 3); // Flete base
     $seguro = $precio * 0.02;
     $aduana = $precio * $impuesto;
-    $costo_almacen = 25; 
+    
+    // Calcular almacenamiento en Bs y convertir a dólares
+    $costo_almacen_bs = calcularCostoAlmacen($largo, $ancho, $alto, $peso);
+    $costo_almacen = $costo_almacen_bs / $tipo_cambio;
     
     $costo_total = $precio + $flete_maritimo + $seguro + $aduana + $costo_almacen;
     
     return [
         'total' => $costo_total,
+        'tipo_cambio' => $tipo_cambio,
         'desglose' => [
-            'producto' => $precio, 'flete' => $flete_maritimo, 
-            'seguro' => $seguro, 'aduana' => $aduana, 'almacen' => $costo_almacen
+            'producto' => $precio, 
+            'flete' => $flete_maritimo, 
+            'seguro' => $seguro, 
+            'aduana' => $aduana, 
+            'almacen' => $costo_almacen,
+            'almacen_bs' => $costo_almacen_bs
+        ],
+        'dimensiones' => [
+            'largo' => $largo,
+            'ancho' => $ancho, 
+            'alto' => $alto,
+            'peso' => $peso
         ]
     ];
 }
-
+// Procesar búsqueda si viene del header
+if (isset($_GET['buscar']) && !empty($_GET['buscar'])) {
+    $termino_busqueda = trim($_GET['buscar']);
+    
+    // Buscar productos
+    $stmt = $db->prepare("
+        SELECT * FROM productos 
+        WHERE estado = 1 AND (
+            nombre ILIKE ? OR 
+            descripcion ILIKE ? OR 
+            categoria ILIKE ? OR
+            REPLACE(LOWER(nombre), ' ', '') LIKE REPLACE(LOWER(?), ' ', '')
+        )
+        ORDER BY 
+            CASE 
+                WHEN nombre ILIKE ? THEN 1
+                WHEN descripcion ILIKE ? THEN 2
+                WHEN categoria ILIKE ? THEN 3
+                ELSE 4
+            END,
+            nombre ASC
+        LIMIT 20
+    ");
+    
+    $termino_like = "%$termino_busqueda%";
+    $termino_sin_espacios = "%" . str_replace(' ', '', $termino_busqueda) . "%";
+    
+    $stmt->execute([
+        $termino_like, 
+        $termino_like, 
+        $termino_like,
+        $termino_sin_espacios,
+        $termino_like,
+        $termino_like,
+        $termino_like
+    ]);
+    
+    $resultados_busqueda = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    $termino_busqueda = '';
+    $resultados_busqueda = [];
+}
 Auth::checkAuth('cliente');
 $db = (new Database())->getConnection();
 
 $user_id = $_SESSION['user_id'];
+
+// Obtener tipo de cambio actual para mostrar
+$tipo_cambio_actual = obtenerTipoCambio();
 
 // Obtener estadísticas REALES
 $stmt = $db->prepare("SELECT COUNT(*) as total_pedidos FROM pedidos WHERE id_cliente = ? AND estado != 'cancelado'");
@@ -129,9 +260,22 @@ foreach ($categorias as $categoria_key => $categoria_info) {
 }
 
 // Productos de Amazon y eBay (simulados)
-$productos_externos = [
+// Obtener productos externos REALES de la base de datos
+$stmt = $db->prepare("
+    SELECT pe.*, t.nombre_tienda 
+    FROM productos_externos pe
+    JOIN tiendas_usa t ON pe.id_tienda = t.id_tienda
+    WHERE pe.id_cliente = ? AND pe.estado = 1
+    ORDER BY pe.fecha_registro DESC
+    LIMIT 8
+");
+$stmt->execute([$user_id]);
+$productos_externos_reales = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Productos de Amazon y eBay (simulados como respaldo)
+$productos_externos_simulados = [
     [
-        'id_producto' => 'amz001',
+        'id_producto_externo' => 'amz001',
         'nombre' => 'Razer DeathAdder Essential - Mouse Gaming',
         'descripcion' => 'Mouse gaming Razer con sensor óptico de 6400 DPI, 5 botones programables y diseño ergonómico para diestros.',
         'precio' => 29.99,
@@ -142,7 +286,7 @@ $productos_externos = [
         'enlace' => 'https://amazon.com/dp/B07QSCM51V'
     ],
     [
-        'id_producto' => 'amz002',
+        'id_producto_externo' => 'amz002',
         'nombre' => 'Sony WH-1000XM4 - Audífonos Inalámbricos',
         'descripcion' => 'Audífonos noise canceling con sonido de alta resolución, 30 horas de batería y asistente de voz integrado.',
         'precio' => 348.00,
@@ -153,7 +297,7 @@ $productos_externos = [
         'enlace' => 'https://amazon.com/dp/B0863TXGM3'
     ],
     [
-        'id_producto' => 'eby001',
+        'id_producto_externo' => 'eby001',
         'nombre' => 'Logitech G Pro X - Headset Gaming',
         'descripcion' => 'Headset gaming con sonido surround 7.1, micrófono desmontable Blue Voice y memoria integrada para perfiles.',
         'precio' => 89.99,
@@ -164,7 +308,7 @@ $productos_externos = [
         'enlace' => 'https://ebay.com/itm/Logitech-G-PRO-X-Gaming-Headset'
     ],
     [
-        'id_producto' => 'eby002',
+        'id_producto_externo' => 'eby002',
         'nombre' => 'SteelSeries Apex Pro - Teclado Mecánico',
         'descripcion' => 'Teclado gaming mecánico con switches ajustables OmniPoint, iluminación RGB y reposamuñecas magnético.',
         'precio' => 179.99,
@@ -175,6 +319,13 @@ $productos_externos = [
         'enlace' => 'https://ebay.com/itm/SteelSeries-Apex-Pro-TKL-Gaming-Keyboard'
     ]
 ];
+
+// Combinar productos reales con simulados (si no hay reales, usar simulados)
+if (count($productos_externos_reales) > 0) {
+    $productos_externos = $productos_externos_reales;
+} else {
+    $productos_externos = $productos_externos_simulados;
+}
 
 // Obtener productos destacados
 $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fetchAll();
@@ -188,13 +339,156 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
         <?php include '../../includes/sidebar.php'; ?>
         
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 cliente-dashboard">
+            <!-- Banner de Tipo de Cambio -->
+            
+
             <div class="d-flex justify-content-between flex-wrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h1 class="h2">¡Bienvenido, <?php echo $_SESSION['nombre']; ?>! 👋</h1>
                 <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCotizacion">
                     💰 Cotización Rápida
                 </button>
             </div>
-
+            <!-- SECCIÓN DE RESULTADOS DE BÚSQUEDA -->
+<?php if (!empty($termino_busqueda)): ?>
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center bg-primary text-white">
+                <h6 class="m-0 font-weight-bold">
+                    🔍 Resultados de Búsqueda
+                </h6>
+                <span class="badge bg-light text-primary">
+                    <?php echo count($resultados_busqueda); ?> producto(s) encontrado(s)
+                </span>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    Mostrando resultados para: <strong>"<?php echo htmlspecialchars($termino_busqueda); ?>"</strong>
+                    <a href="?" class="btn btn-sm btn-outline-secondary ms-2">
+                        <i class="fas fa-times me-1"></i>Limpiar búsqueda
+                    </a>
+                </p>
+                
+                <?php if (count($resultados_busqueda) > 0): ?>
+                <div id="carouselBusqueda" class="carousel slide" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        <?php 
+                        // Dividir resultados en grupos de 4
+                        $resultados_chunks = array_chunk($resultados_busqueda, 4);
+                        foreach ($resultados_chunks as $chunk_index => $productos_chunk): 
+                        ?>
+                        <div class="carousel-item <?php echo $chunk_index === 0 ? 'active' : ''; ?>">
+                            <div class="row g-3">
+                                <?php foreach ($productos_chunk as $producto): 
+                                    $cotizacion = calcularCostoImportacion($producto['precio'], 0.5, $producto['categoria']);
+                                    
+                                    $imagen_url = '';
+                                    if (!empty($producto['imagen'])) {
+                                        $ruta_imagen = '../../assets/img/productos/' . $producto['imagen'];
+                                        
+                                        if (file_exists($ruta_imagen)) {
+                                            $imagen_url = $ruta_imagen;
+                                        } else {
+                                            $imagen_url = 'https://via.placeholder.com/300x200/2c7be5/ffffff?text=' . urlencode(substr($producto['nombre'], 0, 20));
+                                        }
+                                    } else {
+                                        $imagen_url = 'https://via.placeholder.com/300x200/2c7be5/ffffff?text=' . urlencode(substr($producto['nombre'], 0, 20));
+                                    }
+                                ?>
+                                <div class="col-xl-3 col-lg-4 col-md-6">
+                                    <div class="card product-card h-100 shadow-sm">
+                                        <div class="position-relative">
+                                            <img src="<?php echo $imagen_url; ?>" 
+                                                 class="card-img-top" 
+                                                 alt="<?php echo htmlspecialchars($producto['nombre']); ?>"
+                                                 style="height: 200px; object-fit: cover;"
+                                                 onerror="this.onerror=null; this.src='https://via.placeholder.com/300x200/2c7be5/ffffff?text=Imagen+No+Disponible'">
+                                            <div class="position-absolute top-0 start-0 m-2">
+                                                <span class="badge bg-primary">
+                                                    <?php 
+                                                    $categorias_icons = [
+                                                        'electronico' => '📱',
+                                                        'ropa' => '👕',
+                                                        'hogar' => '🏠',
+                                                        'deportes' => '⚽',
+                                                        'otros' => '📦'
+                                                    ];
+                                                    echo $categorias_icons[$producto['categoria']] ?? '📦';
+                                                    ?>
+                                                </span>
+                                            </div>
+                                            <span class="position-absolute top-0 end-0 badge bg-dark m-2">
+                                                $<?php echo number_format($producto['precio'], 2); ?>
+                                            </span>
+                                        </div>
+                                        <div class="card-body d-flex flex-column">
+                                            <h6 class="card-title"><?php echo htmlspecialchars($producto['nombre']); ?></h6>
+                                            <p class="card-text flex-grow-1 text-muted small">
+                                                <?php echo substr($producto['descripcion'] ?? 'Descripción no disponible', 0, 60); ?>...
+                                            </p>
+                                            <div class="mt-auto">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <small class="text-muted">Total con importación:</small>
+                                                    <strong class="text-success">$<?php echo number_format($cotizacion['total'], 2); ?></strong>
+                                                </div>
+                                                <button class="btn btn-primary btn-sm w-100" 
+                                                        onclick="mostrarModalCarrito(<?php echo $producto['id_producto']; ?>, '<?php echo htmlspecialchars(addslashes($producto['nombre'])); ?>', <?php echo $producto['precio']; ?>, '<?php echo $imagen_url; ?>', <?php echo $producto['stock']; ?>, 'local')">
+                                                    <i class="fas fa-cart-plus me-1"></i>Agregar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    
+                    <?php if (count($resultados_chunks) > 1): ?>
+                    <button class="carousel-control-prev carousel-btn-big" type="button" data-bs-target="#carouselBusqueda" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Anterior</span>
+                    </button>
+                    <button class="carousel-control-next carousel-btn-big" type="button" data-bs-target="#carouselBusqueda" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Siguiente</span>
+                    </button>
+                    <?php endif; ?>
+                </div>
+                
+                <!-- Indicadores del carrusel -->
+                <?php if (count($resultados_chunks) > 1): ?>
+                <div class="text-center mt-3">
+                    <?php for ($i = 0; $i < count($resultados_chunks); $i++): ?>
+                    <button type="button" data-bs-target="#carouselBusqueda" data-bs-slide-to="<?php echo $i; ?>" 
+                            class="btn btn-sm <?php echo $i === 0 ? 'btn-primary' : 'btn-outline-primary'; ?> mx-1"
+                            style="width: 10px; height: 10px; padding: 0; border-radius: 50%;">
+                    </button>
+                    <?php endfor; ?>
+                </div>
+                <?php endif; ?>
+                <?php else: ?>
+                <div class="text-center py-5">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h5>No se encontraron productos</h5>
+                    <p class="text-muted">No encontramos productos que coincidan con "<strong><?php echo htmlspecialchars($termino_busqueda); ?></strong>"</p>
+                    <div class="mt-3">
+                        <small class="text-muted">Sugerencias:</small>
+                        <div class="mt-2">
+                            <a href="tienda.php" class="btn btn-outline-primary btn-sm me-2">Ver todos los productos</a>
+                            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAgregarExterno">
+                                Buscar en Amazon/eBay
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
             <!-- Estadísticas Rápidas -->
             <div class="row mb-4">
                 <!-- Pedidos Activos - Clickable -->
@@ -286,52 +580,59 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
                                     <div class="carousel-item <?php echo $chunk_index === 0 ? 'active' : ''; ?>">
                                         <div class="row g-3">
                                             <?php foreach ($productos_chunk as $producto): 
-                                                $cotizacion = calcularCostoImportacion($producto['precio'], 0.5, $producto['categoria']);
-                                                $badge_class = $producto['plataforma'] === 'amazon' ? 'bg-warning' : 'bg-info';
-                                                $badge_text = $producto['plataforma'] === 'amazon' ? 'Amazon' : 'eBay';
-                                            ?>
-                                            <div class="col-xl-3 col-lg-4 col-md-6">
-                                                <div class="card product-card h-100 shadow-sm border-<?php echo $producto['plataforma'] === 'amazon' ? 'warning' : 'info'; ?>">
-                                                    <div class="position-relative">
-                                                        <img src="<?php echo $producto['imagen']; ?>" 
-                                                             class="card-img-top" 
-                                                             alt="<?php echo htmlspecialchars($producto['nombre']); ?>"
-                                                             style="height: 200px; object-fit: cover;"
-                                                             onerror="this.onerror=null; this.src='https://via.placeholder.com/300x200/2c7be5/ffffff?text=Imagen+No+Disponible'">
-                                                        <div class="position-absolute top-0 start-0 m-2">
-                                                            <span class="badge <?php echo $badge_class; ?> text-dark">
-                                                                <i class="fab fa-<?php echo $producto['plataforma']; ?> me-1"></i><?php echo $badge_text; ?>
-                                                            </span>
-                                                        </div>
-                                                        <span class="position-absolute top-0 end-0 badge bg-dark m-2">
-                                                            $<?php echo number_format($producto['precio'], 2); ?>
-                                                        </span>
-                                                    </div>
-                                                    <div class="card-body d-flex flex-column">
-                                                        <h6 class="card-title"><?php echo htmlspecialchars($producto['nombre']); ?></h6>
-                                                        <p class="card-text flex-grow-1 text-muted small">
-                                                            <?php echo substr($producto['descripcion'] ?? 'Descripción no disponible', 0, 60); ?>...
-                                                        </p>
-                                                        <div class="mt-auto">
-                                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                                <small class="text-muted">Total con importación:</small>
-                                                                <strong class="text-success">$<?php echo number_format($cotizacion['total'], 2); ?></strong>
-                                                            </div>
-                                                            <div class="d-grid gap-2">
-                                                                <!-- BOTÓN CORREGIDO - onclick con parámetros correctos -->
-                                                                <button class="btn btn-<?php echo $producto['plataforma'] === 'amazon' ? 'warning' : 'info'; ?> btn-sm" 
-                                                                        onclick="mostrarModalCarrito('<?php echo $producto['id_producto']; ?>', '<?php echo htmlspecialchars(addslashes($producto['nombre'])); ?>', <?php echo $producto['precio']; ?>, '<?php echo $producto['imagen']; ?>', <?php echo $producto['stock']; ?>, '<?php echo $producto['plataforma']; ?>', '<?php echo $producto['enlace']; ?>')">
-                                                                    <i class="fas fa-cart-plus me-1"></i>Cotizar y Agregar
-                                                                </button>
-                                                                <a href="<?php echo $producto['enlace']; ?>" target="_blank" class="btn btn-outline-dark btn-sm">
-                                                                    <i class="fas fa-external-link-alt me-1"></i>Ver en <?php echo $badge_text; ?>
-                                                                </a>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <?php endforeach; ?>
+    // Determinar si es producto real o simulado
+    $es_real = isset($producto['id_producto_externo']);
+    $id_producto = $es_real ? $producto['id_producto_externo'] : ($producto['id_producto'] ?? $producto['id_producto_externo'] ?? 'temp');
+    
+    $cotizacion = calcularCostoImportacion($producto['precio'], $producto['peso'] ?? 0.5, $producto['categoria']);
+    $badge_class = $producto['plataforma'] === 'amazon' ? 'bg-warning' : 'bg-info';
+    $badge_text = $producto['plataforma'] === 'amazon' ? 'Amazon' : 'eBay';
+?>
+<div class="col-xl-3 col-lg-4 col-md-6">
+    <div class="card product-card h-100 shadow-sm border-<?php echo $producto['plataforma'] === 'amazon' ? 'warning' : 'info'; ?>">
+        <div class="position-relative">
+            <img src="<?php echo $producto['imagen']; ?>" 
+                 class="card-img-top" 
+                 alt="<?php echo htmlspecialchars($producto['nombre']); ?>"
+                 style="height: 200px; object-fit: cover;"
+                 onerror="this.onerror=null; this.src='https://via.placeholder.com/300x200/2c7be5/ffffff?text=Imagen+No+Disponible'">
+            <div class="position-absolute top-0 start-0 m-2">
+                <span class="badge <?php echo $badge_class; ?> text-dark">
+                    <i class="fab fa-<?php echo $producto['plataforma']; ?> me-1"></i><?php echo $badge_text; ?>
+                </span>
+                <?php if ($es_real): ?>
+                <span class="badge bg-success ms-1">Real</span>
+                <?php endif; ?>
+            </div>
+            <span class="position-absolute top-0 end-0 badge bg-dark m-2">
+                $<?php echo number_format($producto['precio'], 2); ?>
+            </span>
+        </div>
+        <div class="card-body d-flex flex-column">
+            <h6 class="card-title"><?php echo htmlspecialchars($producto['nombre']); ?></h6>
+            <p class="card-text flex-grow-1 text-muted small">
+                <?php echo substr($producto['descripcion'] ?? 'Producto importado de ' . $badge_text, 0, 60); ?>...
+            </p>
+            <div class="mt-auto">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <small class="text-muted">Total con importación:</small>
+                    <strong class="text-success">$<?php echo number_format($cotizacion['total'], 2); ?></strong>
+                </div>
+                <div class="d-grid gap-2">
+                    <!-- BOTÓN ACTUALIZADO para productos externos reales -->
+                    <button class="btn btn-<?php echo $producto['plataforma'] === 'amazon' ? 'warning' : 'info'; ?> btn-sm" 
+                            onclick="mostrarModalCarritoExterno(<?php echo $id_producto; ?>, '<?php echo htmlspecialchars(addslashes($producto['nombre'])); ?>', <?php echo $producto['precio']; ?>, '<?php echo $producto['imagen']; ?>', <?php echo $producto['stock'] ?? 1; ?>, '<?php echo $producto['plataforma']; ?>', '<?php echo $producto['enlace']; ?>')">
+                        <i class="fas fa-cart-plus me-1"></i>Cotizar y Agregar
+                    </button>
+                    <a href="<?php echo $producto['enlace']; ?>" target="_blank" class="btn btn-outline-dark btn-sm">
+                        <i class="fas fa-external-link-alt me-1"></i>Ver en <?php echo $badge_text; ?>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endforeach; ?>
                                         </div>
                                     </div>
                                     <?php endforeach; ?>
@@ -673,12 +974,15 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Tamaño</label>
-                                <select class="form-select" id="tamanoProducto" required>
-                                    <option value="pequeno">Pequeño - $10</option>
-                                    <option value="mediano">Mediano - $25</option>
-                                    <option value="grande">Grande - $50</option>
-                                    <option value="extra">Extra Grande - $80+</option>
+                                <label class="form-label">Tamaño de Caja</label>
+                                <select class="form-select" id="tamanoCaja" required>
+                                    <option value="20x15x1">Pequeño (20x15x1 cm) - Bs. 135</option>
+                                    <option value="20x15x15">Mediano (20x15x15 cm) - Bs. 180</option>
+                                    <option value="25x15x15">Grande (25x15x15 cm) - Bs. 225</option>
+                                    <option value="30x20x20">Extra Grande (30x20x20 cm) - Bs. 270</option>
+                                    <option value="35x20x20">Envío Pequeño (35x20x20 cm) - Bs. 360</option>
+                                    <option value="50x40x10">Laptop (50x40x10 cm) - Bs. 450</option>
+                                    <option value="60x60x60">Grande Pesado (60x60x60 cm) - Bs. 1800</option>
                                 </select>
                             </div>
                         </div>
@@ -697,6 +1001,9 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                 <button type="button" class="btn btn-primary" onclick="calcularCotizacion()">Calcular</button>
+                <a href="detalles_tarifas.php" class="btn btn-outline-info" target="_blank">
+                    <i class="fas fa-info-circle me-1"></i>Ver Detalles de Tarifas
+                </a>
             </div>
         </div>
     </div>
@@ -714,6 +1021,7 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
                     <strong>¿Cómo funciona?</strong> Ingresa el enlace de cualquier producto de Amazon o eBay y nosotros obtenemos automáticamente la información para cotizar la importación.
+                    <br><small class="mt-1"><strong>Tipo de cambio actual:</strong> Bs. <?php echo number_format($tipo_cambio_actual, 2); ?> por $1 USD</small>
                 </div>
                 
                 <form id="formProductoExterno">
@@ -735,6 +1043,28 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
                             <div class="mb-3">
                                 <label class="form-label"><strong>Peso estimado (kg)</strong></label>
                                 <input type="number" step="0.1" class="form-control" id="pesoProductoExterno" value="0.5" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dimensiones de la caja -->
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label"><strong>Largo (cm)</strong></label>
+                                <input type="number" step="0.1" class="form-control" id="largoProductoExterno" value="20" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label"><strong>Ancho (cm)</strong></label>
+                                <input type="number" step="0.1" class="form-control" id="anchoProductoExterno" value="15" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label"><strong>Alto (cm)</strong></label>
+                                <input type="number" step="0.1" class="form-control" id="altoProductoExterno" value="1" required>
                             </div>
                         </div>
                     </div>
@@ -831,6 +1161,9 @@ $productos = $db->query("SELECT * FROM productos WHERE estado = 1 LIMIT 8")->fet
                                 <div class="d-flex justify-content-between">
                                     <span><strong>Total estimado:</strong></span>
                                     <strong id="modalTotal" class="text-success">$0.00</strong>
+                                </div>
+                                <div class="mt-2 text-center">
+                                    <small class="text-muted" id="modalTipoCambio"></small>
                                 </div>
                             </div>
                         </div>
@@ -1051,6 +1384,9 @@ let plataformaActual = 'local';
 let productoExternoActual = null;
 let infoProductoExterno = null;
 
+// Obtener tipo de cambio actual
+let tipoCambioActual = <?php echo $tipo_cambio_actual; ?>;
+
 // Funciones de navegación
 function irAPedidos() {
     window.location.href = 'pedidos.php';
@@ -1122,6 +1458,66 @@ function mostrarModalCarrito(id, nombre, precio, imagen, stock, plataforma, enla
     modal.show();
 }
 
+// Función específica para productos externos
+function mostrarModalCarritoExterno(id, nombre, precio, imagen, stock, plataforma, enlace = null) {
+    console.log('Mostrando modal para producto EXTERNO:', {id, nombre, precio, plataforma});
+    
+    // Crear objeto producto con toda la información necesaria
+    productoActual = {
+        id: id,
+        nombre: nombre,
+        precio: precio,
+        imagen: imagen,
+        stock: stock,
+        plataforma: plataforma,
+        enlace: enlace,
+        // Agregar campos adicionales para productos simulados
+        categoria: 'electronico', // Por defecto para productos del carrusel
+        peso: 0.5 // Por defecto
+    };
+    
+    precioUnitario = parseFloat(precio);
+    plataformaActual = plataforma;
+    
+    // Llenar datos del modal
+    document.getElementById('modalImagenProducto').src = imagen;
+    document.getElementById('modalNombreProducto').textContent = nombre;
+    document.getElementById('modalPrecioProducto').textContent = `$${precioUnitario.toFixed(2)}`;
+    document.getElementById('modalStockProducto').textContent = `${stock} unidades disponibles`;
+    
+    // Mostrar plataforma
+    const plataformaText = {
+        'amazon': 'Amazon',
+        'ebay': 'eBay', 
+        'local': 'Tienda Local'
+    }[plataforma] || 'Local';
+    
+    const badgeClass = {
+        'amazon': 'bg-warning',
+        'ebay': 'bg-info',
+        'local': 'bg-success'
+    }[plataforma] || 'bg-secondary';
+    
+    const badgeElement = document.getElementById('modalPlataformaBadge');
+    badgeElement.textContent = plataformaText;
+    badgeElement.className = `badge ${badgeClass}`;
+    
+    // Si hay enlace externo, mostrar botón
+    if (enlace) {
+        badgeElement.innerHTML = `${plataformaText} <a href="${enlace}" target="_blank" class="text-white ms-1"><i class="fas fa-external-link-alt"></i></a>`;
+    }
+    
+    // Reset cantidad
+    document.getElementById('cantidadProducto').value = 1;
+    
+    // Calcular costos iniciales
+    calcularResumen();
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('modalAgregarCarrito'));
+    modal.show();
+}
+
 function cambiarCantidad(cambio) {
     const input = document.getElementById('cantidadProducto');
     let nuevaCantidad = parseInt(input.value) + cambio;
@@ -1139,28 +1535,97 @@ function calcularResumen() {
     const subtotal = precioUnitario * cantidad;
     
     // Calcular costos de importación
-    const costoImportacion = calcularCostoImportacionJS(precioUnitario, 0.5, 'electronico');
+    const costoImportacion = calcularCostoImportacionJS(precioUnitario, 0.5, 'electronico', 20, 15, 1, tipoCambioActual);
     const totalImportacion = costoImportacion.total * cantidad;
     const impuestos = totalImportacion - subtotal;
     
     document.getElementById('modalSubtotal').textContent = `$${subtotal.toFixed(2)}`;
     document.getElementById('modalImpuestos').textContent = `$${impuestos.toFixed(2)}`;
     document.getElementById('modalTotal').textContent = `$${totalImportacion.toFixed(2)}`;
+    document.getElementById('modalTipoCambio').textContent = `Tipo de cambio: Bs. ${tipoCambioActual.toFixed(2)} por $1 USD`;
 }
 
-function calcularCostoImportacionJS(precio, peso, categoria) {
-    const impuestos = {'electronico':0.30, 'ropa':0.20, 'hogar':0.15, 'deportes':0.25, 'otros':0.18};
-    const flete = Math.max(15, peso * 3);
+// Función para calcular costo de almacenamiento en JavaScript
+function calcularCostoAlmacenJS(largo, ancho, alto, peso) {
+    // Tarifas en Bolivianos según las dimensiones
+    const tarifas = [
+        [20, 20, 15, 15, 1, 1, 100, 135],      // 20x15x1
+        [20, 20, 15, 15, 15, 15, 100, 180],    // 20x15x15
+        [25, 25, 15, 15, 15, 15, 100, 225],    // 25x15x15
+        [30, 30, 20, 20, 20, 20, 100, 270],    // 30x20x20
+        [35, 35, 20, 20, 20, 20, 100, 360],    // 35x20x20
+        [50, 50, 40, 40, 10, 10, 10, 450],     // 50x40x10 (hasta 10kg)
+        [50, 50, 40, 40, 10, 10, 100, 1350],   // 50x40x10 (más de 10kg)
+        [60, 60, 60, 60, 60, 60, 20, 1800],    // 60x60x60 (hasta 20kg)
+        [100, 100, 100, 100, 60, 60, 25, 2250], // 100x100x60 (hasta 25kg)
+        [150, 150, 100, 100, 100, 100, 30, 3150] // 150x100x100 (hasta 30kg)
+    ];
+    
+    // Buscar la tarifa que coincida con las dimensiones
+    for (const tarifa of tarifas) {
+        const [l_min, l_max, a_min, a_max, h_min, h_max, p_max, costo] = tarifa;
+        
+        if (largo >= l_min && largo <= l_max &&
+            ancho >= a_min && ancho <= a_max &&
+            alto >= h_min && alto <= h_max &&
+            peso <= p_max) {
+            return costo;
+        }
+    }
+    
+    // Si no encuentra tarifa específica, calcular por volumen aproximado
+    const volumen = largo * ancho * alto;
+    if (volumen <= 300) return 135;
+    if (volumen <= 4500) return 180;
+    if (volumen <= 5625) return 225;
+    if (volumen <= 12000) return 270;
+    if (volumen <= 14000) return 360;
+    if (volumen <= 20000) return 450;
+    if (volumen <= 20000 && peso > 10) return 1350;
+    if (volumen <= 216000) return 1800;
+    if (volumen <= 600000) return 2250;
+    return 3150;
+}
+
+// Función principal de cálculo de importación en JavaScript
+function calcularCostoImportacionJS(precio, peso, categoria, largo, ancho, alto, tipoCambio) {
+    const impuestos = {
+        'electronico': 0.30, 
+        'ropa': 0.20, 
+        'hogar': 0.15, 
+        'deportes': 0.25, 
+        'otros': 0.18
+    };
+    
+    // Calcular costos en dólares
+    const impuesto = impuestos[categoria] || 0.18;
+    const flete_maritimo = Math.max(15, peso * 3); // Flete base
     const seguro = precio * 0.02;
-    const aduana = precio * (impuestos[categoria] || 0.18);
-    const almacen = 25;
+    const aduana = precio * impuesto;
+    
+    // Calcular almacenamiento en Bs y convertir a dólares
+    const costo_almacen_bs = calcularCostoAlmacenJS(largo, ancho, alto, peso);
+    const costo_almacen = costo_almacen_bs / tipoCambio;
+    
+    const total = precio + flete_maritimo + seguro + aduana + costo_almacen;
     
     return {
-        total: precio + flete + seguro + aduana + almacen,
-        flete: flete,
-        seguro: seguro,
-        aduana: aduana,
-        almacen: almacen
+        total: total,
+        tipo_cambio: tipoCambio,
+        desglose: {
+            producto: precio, 
+            flete: flete_maritimo, 
+            seguro: seguro, 
+            aduana: aduana, 
+            almacen: costo_almacen,
+            almacen_bs: costo_almacen_bs
+        },
+        dimensiones: {
+            largo: largo,
+            ancho: ancho, 
+            alto: alto,
+            peso: peso
+        }
     };
 }
 
@@ -1173,33 +1638,86 @@ function confirmarAgregarCarrito() {
     }
     
     const formData = new FormData();
-    formData.append('id_producto', productoActual);
-    formData.append('cantidad', cantidad);
-    formData.append('plataforma', plataformaActual);
+    let endpoint;
     
-    fetch('../../procesos/agregar_carrito.php', {
+    console.log('Agregando producto:', {
+        productoActual,
+        plataformaActual,
+        cantidad
+    });
+    
+    // Determinar qué endpoint usar y qué datos enviar
+    if (plataformaActual === 'local') {
+        // Producto local - usar el endpoint existente
+        formData.append('id_producto', productoActual);
+        formData.append('cantidad', cantidad);
+        endpoint = '../../procesos/agregar_carrito.php';
+    } else {
+        // Producto externo - usar el nuevo endpoint
+        if (typeof productoActual === 'object' && productoActual.id) {
+            // Producto externo del carrusel (puede ser real o simulado)
+            formData.append('id_producto_externo', productoActual.id);
+            formData.append('plataforma', productoActual.plataforma || plataformaActual);
+            formData.append('nombre', productoActual.nombre);
+            formData.append('precio', productoActual.precio);
+            formData.append('url', productoActual.enlace || '');
+            
+            // Si es un producto simulado, agregar más datos
+            if (productoActual.id.toString().startsWith('amz') || productoActual.id.toString().startsWith('eby')) {
+                formData.append('categoria', productoActual.categoria || 'electronico');
+                formData.append('peso', productoActual.peso || 0.5);
+                formData.append('largo', 20);
+                formData.append('ancho', 15);
+                formData.append('alto', 1);
+            }
+        } else {
+            // Producto externo con ID simple
+            formData.append('id_producto_externo', productoActual);
+            formData.append('plataforma', plataformaActual);
+        }
+        endpoint = '../../procesos/agregar_carrito_externo.php';
+    }
+    
+    console.log('Enviando a:', endpoint);
+    console.log('Datos:', Object.fromEntries(formData));
+    
+    fetch(endpoint, {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Respuesta HTTP:', response.status);
+        return response.json().catch(() => {
+            throw new Error('El servidor devolvió una respuesta no JSON');
+        });
+    })
     .then(data => {
+        console.log('Respuesta del servidor:', data);
+        
         if (data.success) {
             // Cerrar modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('modalAgregarCarrito'));
-            modal.hide();
+            if (modal) modal.hide();
             
             // Mostrar mensaje de éxito
             alert(`✅ ${data.message}`);
             
             // Actualizar contador del carrito
             actualizarContadorCarrito();
+            
+            // Recargar página si es producto externo para mostrar en carrusel
+            if (plataformaActual !== 'local') {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            }
         } else {
             alert(`❌ ${data.message}`);
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('❌ Error de conexión');
+        console.error('Error completo:', error);
+        alert('❌ Error de conexión: ' + error.message);
     });
 }
 
@@ -1272,26 +1790,48 @@ function calcularCotizacionExterno() {
     const precio = parseFloat(document.getElementById('precioProductoExterno').value) || 0;
     const peso = parseFloat(document.getElementById('pesoProductoExterno').value) || 0;
     const categoria = document.getElementById('categoriaProductoExterno').value;
+    const largo = parseFloat(document.getElementById('largoProductoExterno').value) || 0;
+    const ancho = parseFloat(document.getElementById('anchoProductoExterno').value) || 0;
+    const alto = parseFloat(document.getElementById('altoProductoExterno').value) || 0;
     
     if (precio <= 0 || peso <= 0) {
         alert('Complete precio y peso correctamente');
         return;
     }
-    
-    const cotizacion = calcularCostoImportacionJS(precio, peso, categoria);
+
+    const cotizacion = calcularCostoImportacionJS(precio, peso, categoria, largo, ancho, alto, tipoCambioActual);
     
     document.getElementById('resultadoCotizacionExterno').innerHTML = `
         <div class="row">
             <div class="col-6"><small>Producto:</small><br><strong>$${precio.toFixed(2)}</strong></div>
-            <div class="col-6"><small>Flete:</small><br><strong>$${cotizacion.flete.toFixed(2)}</strong></div>
+            <div class="col-6"><small>Flete:</small><br><strong>$${cotizacion.desglose.flete.toFixed(2)}</strong></div>
         </div>
         <div class="row mt-2">
-            <div class="col-6"><small>Seguro (2%):</small><br><strong>$${cotizacion.seguro.toFixed(2)}</strong></div>
-            <div class="col-6"><small>Aduana:</small><br><strong>$${cotizacion.aduana.toFixed(2)}</strong></div>
+            <div class="col-6"><small>Seguro (2%):</small><br><strong>$${cotizacion.desglose.seguro.toFixed(2)}</strong></div>
+            <div class="col-6"><small>Aduana (${(cotizacion.desglose.aduana/precio*100).toFixed(0)}%):</small><br><strong>$${cotizacion.desglose.aduana.toFixed(2)}</strong></div>
         </div>
         <div class="row mt-2">
-            <div class="col-6"><small>Almacenaje:</small><br><strong>$${cotizacion.almacen.toFixed(2)}</strong></div>
+            <div class="col-6">
+                <small>Almacenaje (Bs. ${cotizacion.desglose.almacen_bs.toFixed(2)}):</small><br>
+                <strong>$${cotizacion.desglose.almacen.toFixed(2)}</strong>
+            </div>
             <div class="col-6"><small>TOTAL:</small><br><strong class="text-success">$${cotizacion.total.toFixed(2)}</strong></div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12">
+                <small class="text-muted">
+                    <strong>Dimensiones:</strong> ${largo}x${ancho}x${alto} cm | 
+                    <strong>Peso:</strong> ${peso} kg | 
+                    <strong>Tipo cambio:</strong> Bs. ${tipoCambioActual.toFixed(2)}
+                </small>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12">
+                <a href="detalles_tarifas.php" class="btn btn-sm btn-outline-info w-100" target="_blank">
+                    <i class="fas fa-info-circle me-1"></i>Ver detalles completos de tarifas
+                </a>
+            </div>
         </div>
     `;
     
@@ -1300,6 +1840,9 @@ function calcularCotizacionExterno() {
         precio: precio,
         peso: peso,
         categoria: categoria,
+        largo: largo,
+        ancho: ancho,
+        alto: alto,
         cotizacion: cotizacion
     };
     
@@ -1312,6 +1855,9 @@ function agregarProductoExterno() {
     const precio = parseFloat(document.getElementById('precioProductoExterno').value) || 0;
     const peso = parseFloat(document.getElementById('pesoProductoExterno').value) || 0;
     const categoria = document.getElementById('categoriaProductoExterno').value;
+    const largo = parseFloat(document.getElementById('largoProductoExterno').value) || 0;
+    const ancho = parseFloat(document.getElementById('anchoProductoExterno').value) || 0;
+    const alto = parseFloat(document.getElementById('altoProductoExterno').value) || 0;
     
     if (!url || precio <= 0) {
         alert('Complete todos los campos correctamente');
@@ -1323,6 +1869,9 @@ function agregarProductoExterno() {
     formData.append('precio', precio);
     formData.append('peso', peso);
     formData.append('categoria', categoria);
+    formData.append('largo', largo);
+    formData.append('ancho', ancho);
+    formData.append('alto', alto);
     formData.append('plataforma', url.includes('amazon') ? 'amazon' : 'ebay');
     formData.append('nombre', infoProductoExterno?.nombre || 'Producto Externo');
     
@@ -1361,36 +1910,51 @@ function agregarProductoExterno() {
 function calcularCotizacion() {
     const precio = parseFloat(document.getElementById('precioProducto').value) || 0;
     const peso = parseFloat(document.getElementById('pesoProducto').value) || 0;
+    const categoria = document.getElementById('categoriaProducto').value;
+    const tamanoCaja = document.getElementById('tamanoCaja').value;
+    
+    // Convertir tamaño de caja a dimensiones
+    let largo = 20, ancho = 15, alto = 1;
+    switch(tamanoCaja) {
+        case '20x15x1': largo = 20; ancho = 15; alto = 1; break;
+        case '20x15x15': largo = 20; ancho = 15; alto = 15; break;
+        case '25x15x15': largo = 25; ancho = 15; alto = 15; break;
+        case '30x20x20': largo = 30; ancho = 20; alto = 20; break;
+        case '35x20x20': largo = 35; ancho = 20; alto = 20; break;
+        case '50x40x10': largo = 50; ancho = 40; alto = 10; break;
+        case '60x60x60': largo = 60; ancho = 60; alto = 60; break;
+    }
     
     if (precio <= 0 || peso <= 0) {
         alert('Complete precio y peso correctamente');
         return;
     }
-    
-    const impuestos = {'electronico':0.30, 'ropa':0.20, 'hogar':0.15, 'deportes':0.25, 'otros':0.18};
-    const almacen = {'pequeno':10, 'mediano':25, 'grande':50, 'extra':80};
-    
-    const categoria = document.getElementById('categoriaProducto').value;
-    const tamano = document.getElementById('tamanoProducto').value;
-    
-    const flete = Math.max(15, peso * 3);
-    const seguro = precio * 0.02;
-    const aduana = precio * (impuestos[categoria] || 0.18);
-    const costoAlmacen = almacen[tamano] || 25;
-    const total = precio + flete + seguro + aduana + costoAlmacen;
+
+    const cotizacion = calcularCostoImportacionJS(precio, peso, categoria, largo, ancho, alto, tipoCambioActual);
     
     document.getElementById('resultadoCotizacion').innerHTML = `
         <div class="row">
             <div class="col-6"><small>Producto:</small><br><strong>$${precio.toFixed(2)}</strong></div>
-            <div class="col-6"><small>Flete:</small><br><strong>$${flete.toFixed(2)}</strong></div>
+            <div class="col-6"><small>Flete:</small><br><strong>$${cotizacion.desglose.flete.toFixed(2)}</strong></div>
         </div>
         <div class="row mt-2">
-            <div class="col-6"><small>Seguro (2%):</small><br><strong>$${seguro.toFixed(2)}</strong></div>
-            <div class="col-6"><small>Aduana:</small><br><strong>$${aduana.toFixed(2)}</strong></div>
+            <div class="col-6"><small>Seguro (2%):</small><br><strong>$${cotizacion.desglose.seguro.toFixed(2)}</strong></div>
+            <div class="col-6"><small>Aduana (${(cotizacion.desglose.aduana/precio*100).toFixed(0)}%):</small><br><strong>$${cotizacion.desglose.aduana.toFixed(2)}</strong></div>
         </div>
         <div class="row mt-2">
-            <div class="col-6"><small>Almacenaje:</small><br><strong>$${costoAlmacen.toFixed(2)}</strong></div>
-            <div class="col-6"><small>TOTAL:</small><br><strong class="text-success">$${total.toFixed(2)}</strong></div>
+            <div class="col-6">
+                <small>Almacenaje (Bs. ${cotizacion.desglose.almacen_bs.toFixed(2)}):</small><br>
+                <strong>$${cotizacion.desglose.almacen.toFixed(2)}</strong>
+            </div>
+            <div class="col-6"><small>TOTAL:</small><br><strong class="text-success">$${cotizacion.total.toFixed(2)}</strong></div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12">
+                <small class="text-muted">
+                    <strong>Dimensiones:</strong> ${largo}x${ancho}x${alto} cm | 
+                    <strong>Tipo cambio:</strong> Bs. ${tipoCambioActual.toFixed(2)}
+                </small>
+            </div>
         </div>
     `;
 }
@@ -1432,7 +1996,33 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+.carousel-btn-big {
+    width: 50px;
+    height: 50px;
+    background-color: rgba(0,0,0,0.5);
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+}
 
+.carousel-btn-big:hover {
+    background-color: rgba(0,0,0,0.7);
+}
+
+.clickable-card:hover {
+    transform: translateY(-2px);
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.product-card {
+    transition: all 0.3s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
 </style>
 
 <?php include '../../includes/footer.php'; ?>

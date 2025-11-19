@@ -3,6 +3,9 @@
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
+
+// Cargar sistema de notificaciones
+require_once '../../includes/notificaciones.php';
 ?>
 <!DOCTYPE html>
 <html lang="es" class="h-100">
@@ -18,7 +21,12 @@ if (session_status() == PHP_SESSION_NONE) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="d-flex flex-column h-100 <?php echo isset($_SESSION['rol']) ? $_SESSION['rol'] . '-dashboard' : 'public-page'; ?>">
-    <?php if (isset($_SESSION['user_id'])): ?>
+    <?php if (isset($_SESSION['user_id'])): 
+        // Obtener notificaciones
+        $notificaciones = new Notificaciones();
+        $notifs = $notificaciones->obtener($_SESSION['user_id'], $_SESSION['rol']);
+        $no_leidas = $notificaciones->obtenerNoLeidas($_SESSION['user_id'], $_SESSION['rol']);
+    ?>
     <header class="header">
         <nav class="navbar navbar-expand-lg">
             <div class="container-fluid">
@@ -27,6 +35,60 @@ if (session_status() == PHP_SESSION_NONE) {
                 </a>
                 
                 <div class="navbar-nav ms-auto align-items-center">
+                    <!-- Campana de Notificaciones -->
+                    <div class="dropdown me-3">
+                        <button class="btn btn-outline-light btn-sm position-relative dropdown-toggle" 
+                                type="button" id="notificacionesDropdown" 
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-bell"></i>
+                            <?php if ($no_leidas > 0): ?>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                <?php echo $no_leidas; ?>
+                            </span>
+                            <?php endif; ?>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificacionesDropdown" style="min-width: 350px; max-height: 400px; overflow-y: auto;">
+                            <li class="dropdown-header d-flex justify-content-between align-items-center">
+                                <strong>Notificaciones</strong>
+                                <?php if ($no_leidas > 0): ?>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="marcarTodasLeidas()">
+                                    Marcar todas como leídas
+                                </button>
+                                <?php endif; ?>
+                            </li>
+                            <?php if (empty($notifs)): ?>
+                            <li><a class="dropdown-item text-center text-muted py-3" href="#">No hay notificaciones</a></li>
+                            <?php else: ?>
+                            <?php foreach ($notifs as $notif): ?>
+                            <li>
+                                <a class="dropdown-item <?php echo !$notif['leido'] ? 'bg-light' : ''; ?> notificacion-item" 
+                                   href="<?php echo $notif['enlace'] ?: '#'; ?>" 
+                                   data-id="<?php echo $notif['id_notificacion']; ?>"
+                                   onclick="marcarLeida(<?php echo $notif['id_notificacion']; ?>)">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1"><?php echo htmlspecialchars($notif['titulo']); ?></h6>
+                                        <small class="text-muted"><?php 
+                                            $fecha = new DateTime($notif['fecha_creacion']);
+                                            echo $fecha->format('H:i');
+                                        ?></small>
+                                    </div>
+                                    <p class="mb-1 small"><?php echo htmlspecialchars($notif['mensaje']); ?></p>
+                                    <?php if (!$notif['leido']): ?>
+                                    <span class="badge bg-primary">Nuevo</span>
+                                    <?php endif; ?>
+                                </a>
+                            </li>
+                            <?php if ($notif !== end($notifs)): ?>
+                            <li><hr class="dropdown-divider"></li>
+                            <?php endif; ?>
+                            <?php endforeach; ?>
+                            <?php endif; ?>
+                            <li class="dropdown-footer text-center">
+                                <a href="notificaciones.php" class="btn btn-sm btn-outline-primary w-100">Ver todas las notificaciones</a>
+                            </li>
+                        </ul>
+                    </div>
+
                     <span class="navbar-text me-3 d-none d-md-block">
                         <i class="fas fa-user me-1"></i>Hola, <strong><?php echo $_SESSION['nombre']; ?></strong>
                     </span>
@@ -40,6 +102,112 @@ if (session_status() == PHP_SESSION_NONE) {
     </header>
     <?php endif; ?>
     <!-- Scripts de Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Gestor de temas persistente -->
+    <script src="../../assets/js/theme-manager.js"></script>
+    
+    <!-- Script para notificaciones -->
+    <script>
+    // Script para notificaciones - VERSIÓN MEJORADA
+function marcarLeida(id_notificacion) {
+    fetch('../../procesos/marcar_notificacion_leida.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'id_notificacion=' + id_notificacion
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remover el badge "Nuevo" y actualizar contador
+            const item = document.querySelector(`.notificacion-item[data-id="${id_notificacion}"]`);
+            if (item) {
+                item.classList.remove('bg-light');
+                const badge = item.querySelector('.badge');
+                if (badge) badge.remove();
+            }
+            actualizarContadorNotificaciones();
+        } else {
+            console.error('Error al marcar como leída:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error de conexión:', error);
+    });
+}
+
+function marcarTodasLeidas() {
+    fetch('../../procesos/marcar_todas_leidas.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Actualizar la UI
+            document.querySelectorAll('.notificacion-item').forEach(item => {
+                item.classList.remove('bg-light');
+                const badge = item.querySelector('.badge');
+                if (badge) badge.remove();
+            });
+            actualizarContadorNotificaciones();
+            
+            // Cerrar el dropdown
+            const dropdown = document.getElementById('notificacionesDropdown');
+            if (dropdown) {
+                bootstrap.Dropdown.getInstance(dropdown)?.hide();
+            }
+        } else {
+            console.error('Error al marcar todas como leídas:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error de conexión:', error);
+    });
+}
+
+function actualizarContadorNotificaciones() {
+    fetch('../../procesos/obtener_notificaciones.php')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const badge = document.querySelector('.navbar .badge.bg-danger');
+            const dropdownToggle = document.getElementById('notificacionesDropdown');
+            
+            if (data.no_leidas > 0) {
+                if (!badge) {
+                    // Crear badge si no existe
+                    const newBadge = document.createElement('span');
+                    newBadge.className = 'position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger';
+                    newBadge.textContent = data.no_leidas;
+                    dropdownToggle.appendChild(newBadge);
+                } else {
+                    // Actualizar badge existente
+                    badge.textContent = data.no_leidas;
+                }
+            } else if (badge) {
+                // Remover badge si no hay notificaciones no leídas
+                badge.remove();
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error al actualizar contador:', error);
+    });
+}
+
+// Actualizar notificaciones cada 30 segundos
+setInterval(actualizarContadorNotificaciones, 30000);
+
+// Actualizar al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    actualizarContadorNotificaciones();
+});
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     
     <!-- Gestor de temas persistente -->

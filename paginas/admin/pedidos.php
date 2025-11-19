@@ -3,6 +3,7 @@ require_once '../../includes/config.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
 require_once '../../includes/auditoria.class.php';
+require_once '../../includes/notificaciones.php';
 
 try {
     Auth::checkAuth('admin');
@@ -13,12 +14,12 @@ try {
 
 $db = (new Database())->getConnection();
 $auditoria = new Auditoria($db);
+$notificaciones = new Notificaciones(); // AÑADIR ESTA LÍNEA
 
 // Obtener información del admin para auditoría
 $admin_id = $_SESSION['usuario_id'] ?? $_SESSION['user_id'] ?? 0;
 $ip_address = $_SERVER['REMOTE_ADDR'];
 
-// Procesar cambios de estado
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['accion'])) {
         switch ($_POST['accion']) {
@@ -50,6 +51,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $db->prepare("UPDATE pedidos SET estado = ? WHERE id_pedido = ?");
                 if ($stmt->execute([$estado, $id])) {
                     $_SESSION['success'] = "Estado del pedido #$id actualizado a " . ucfirst($estado);
+                    
+                    // NOTIFICAR AL CLIENTE SOBRE EL CAMBIO DE ESTADO - AÑADIR ESTO
+                    try {
+                        $notificaciones->notificarEstadoPedido(
+                            $pedido_anterior['id_cliente'], 
+                            $id, 
+                            $estado
+                        );
+                        error_log("✅ Notificación enviada al cliente ID: {$pedido_anterior['id_cliente']} sobre cambio de estado del pedido #$id a: $estado");
+                    } catch (Exception $e) {
+                        error_log("❌ Error al enviar notificación: " . $e->getMessage());
+                    }
                     
                     // AUDITORÍA: Registrar cambio de estado
                     $datos_anteriores = [
@@ -103,7 +116,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Location: pedidos.php' . (isset($_GET['estado']) ? '?estado=' . $_GET['estado'] : ''));
     exit;
 }
-
 // Obtener filtro de estado
 $filtro_estado = $_GET['estado'] ?? 'todos';
 $where_condition = "";
@@ -493,135 +505,225 @@ foreach ($contadores_db as $contador) {
         });
 
         // Función para cargar detalles del pedido
-        function cargarDetallePedido(pedidoId) {
-            // Mostrar loading
-            document.getElementById('detalle-pedido-content').innerHTML = `
-                <div class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
-                    <p class="mt-2">Cargando detalles del pedido...</p>
-                </div>
-            `;
+        // Función para cargar detalles del pedido
+function cargarDetallePedido(pedidoId) {
+    // Mostrar loading
+    document.getElementById('detalle-pedido-content').innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando detalles del pedido...</p>
+        </div>
+    `;
 
-            // Actualizar título del modal
-            document.getElementById('pedido-id-title').textContent = '#' + pedidoId;
+    // Actualizar título del modal
+    document.getElementById('pedido-id-title').textContent = '#' + pedidoId;
 
-            // Mostrar el modal
-            const modal = new bootstrap.Modal(document.getElementById('modalDetallePedido'));
-            modal.show();
+    // Mostrar el modal
+    const modal = new bootstrap.Modal(document.getElementById('modalDetallePedido'));
+    modal.show();
 
-            // Hacer petición AJAX para obtener los detalles
-            fetch('../../procesos/obtener_detalle_pedido.php?id=' + pedidoId)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Error en la respuesta del servidor: ' + response.status);
-                    }
-                    return response.text();
-                })
-                .then(text => {
-                    try {
-                        const data = JSON.parse(text);
-                        if (data.success) {
-                            mostrarDetallePedido(data.pedido, data.productos);
-                        } else {
-                            mostrarError(data.message || 'Error al cargar los detalles del pedido');
-                        }
-                    } catch (e) {
-                        console.error('Error parsing JSON:', e, 'Response text:', text);
-                        mostrarError('Error en el formato de respuesta del servidor');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    mostrarError('Error al cargar los detalles del pedido: ' + error.message);
-                });
-        }
+    // Hacer petición AJAX para obtener los detalles
+    fetch('../../procesos/obtener_detalle_pedido.php?id=' + pedidoId)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error en la respuesta del servidor: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                mostrarDetallePedido(data.pedido, data.productos);
+            } else {
+                mostrarError(data.message || 'Error al cargar los detalles del pedido');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarError('Error al cargar los detalles del pedido: ' + error.message);
+        });
+}
 
         // Función para mostrar los detalles del pedido
-        function mostrarDetallePedido(pedido, productos) {
-            const badgeClass = {
-                'pendiente': 'bg-warning',
-                'pagado': 'bg-info',
-                'enviado': 'bg-success',
-                'cancelado': 'bg-danger'
-            }[pedido.estado] || 'bg-secondary';
+        // Función para mostrar los detalles del pedido
+function mostrarDetallePedido(pedido, productos) {
+    const badgeClass = {
+        'pendiente': 'bg-warning',
+        'pagado': 'bg-info',
+        'enviado': 'bg-success',
+        'cancelado': 'bg-danger'
+    }[pedido.estado] || 'bg-secondary';
 
-            let productosHTML = '';
-            
-            if (productos && productos.length > 0) {
-                productos.forEach(producto => {
-                    const subtotal = parseFloat(producto.precio) * parseInt(producto.cantidad);
-                    productosHTML += `
-                        <tr>
-                            <td>${producto.producto}</td>
-                            <td>${producto.cantidad}</td>
-                            <td>$${parseFloat(producto.precio).toFixed(2)}</td>
-                            <td>$${subtotal.toFixed(2)}</td>
-                        </tr>
-                    `;
-                });
-            } else {
-                productosHTML = `
+    let productosHTML = '';
+    let totalPedido = 0;
+    
+    if (productos && productos.length > 0) {
+        productos.forEach(producto => {
+            const subtotal = parseFloat(producto.precio_final) * parseInt(producto.cantidad);
+            totalPedido += subtotal;
+
+            if (producto.tipo === 'local') {
+                // Producto local
+                productosHTML += `
                     <tr>
-                        <td colspan="4" class="text-center">
-                            <div class="alert alert-warning mb-0">
-                                No se encontraron productos para este pedido.
+                        <td>
+                            <strong>${producto.nombre}</strong>
+                            <br><small class="text-muted">Producto local</small>
+                        </td>
+                        <td>${producto.cantidad}</td>
+                        <td>
+                            <div>$${parseFloat(producto.precio_base).toFixed(2)}</div>
+                            <small class="text-success">Total: $${parseFloat(producto.precio_final).toFixed(2)}</small>
+                        </td>
+                        <td>$${subtotal.toFixed(2)}</td>
+                    </tr>
+                `;
+            } else {
+                // Producto externo
+                const plataformaText = producto.plataforma === 'amazon' ? 'Amazon' : 'eBay';
+                productosHTML += `
+                    <tr>
+                        <td>
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>${producto.nombre}</strong>
+                                    <br>
+                                    <span class="badge ${producto.badge_class}">${plataformaText}</span>
+                                    <small class="text-muted d-block">Peso: ${producto.peso} kg | ${producto.categoria}</small>
+                                </div>
+                                ${producto.url ? `
+                                <a href="${producto.url}" target="_blank" class="btn btn-sm btn-outline-primary ms-2" 
+                                   title="Ver producto en ${plataformaText}">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </a>
+                                ` : ''}
                             </div>
+                        </td>
+                        <td>${producto.cantidad}</td>
+                        <td>
+                            <div class="small">
+                                <div>Base: $${parseFloat(producto.precio_base).toFixed(2)}</div>
+                                <div>+ Flete: $${parseFloat(producto.costo_importacion.desglose.flete).toFixed(2)}</div>
+                                <div>+ Seguro: $${parseFloat(producto.costo_importacion.desglose.seguro).toFixed(2)}</div>
+                                <div>+ Aduana: $${parseFloat(producto.costo_importacion.desglose.aduana).toFixed(2)}</div>
+                                <div>+ Almacén: $${parseFloat(producto.costo_importacion.desglose.almacen).toFixed(2)}</div>
+                                <strong class="text-success">Total: $${parseFloat(producto.precio_final).toFixed(2)}</strong>
+                            </div>
+                        </td>
+                        <td>
+                            <strong>$${subtotal.toFixed(2)}</strong>
                         </td>
                     </tr>
                 `;
             }
-
-            const contenido = `
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6>Información del Cliente</h6>
-                        <p>
-                            <strong>Nombre:</strong> ${pedido.cliente_nombre}<br>
-                            <strong>Email:</strong> ${pedido.cliente_email}<br>
-                            <strong>ID Cliente:</strong> ${pedido.id_cliente}
-                        </p>
+        });
+    } else {
+        productosHTML = `
+            <tr>
+                <td colspan="4" class="text-center">
+                    <div class="alert alert-warning mb-0">
+                        No se encontraron productos para este pedido.
                     </div>
-                    <div class="col-md-6">
-                        <h6>Información del Pedido</h6>
-                        <p>
-                            <strong>ID Pedido:</strong> #${pedido.id_pedido}<br>
-                            <strong>Fecha:</strong> ${formatDate(pedido.fecha)}<br>
-                            <strong>Estado:</strong> <span class="badge ${badgeClass}">${pedido.estado.charAt(0).toUpperCase() + pedido.estado.slice(1)}</span><br>
-                            <strong>Total:</strong> $${parseFloat(pedido.total).toFixed(2)}
+                </td>
+            </tr>
+        `;
+    }
+
+    // Información de estadísticas
+    const stats = productos ? {
+        locales: productos.filter(p => p.tipo === 'local').length,
+        externos: productos.filter(p => p.tipo === 'externo').length,
+        total: productos.length
+    } : { locales: 0, externos: 0, total: 0 };
+
+    const contenido = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>👤 Información del Cliente</h6>
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <p class="mb-1"><strong>Nombre:</strong> ${pedido.cliente_nombre}</p>
+                        <p class="mb-1"><strong>Email:</strong> ${pedido.cliente_email}</p>
+                        <p class="mb-1"><strong>Teléfono:</strong> ${pedido.telefono || 'No especificado'}</p>
+                        <p class="mb-0"><strong>Dirección:</strong> ${pedido.direccion || 'No especificada'}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h6>📦 Información del Pedido</h6>
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <p class="mb-1"><strong>ID Pedido:</strong> #${pedido.id_pedido}</p>
+                        <p class="mb-1"><strong>Fecha:</strong> ${formatDate(pedido.fecha)}</p>
+                        <p class="mb-1">
+                            <strong>Estado:</strong> 
+                            <span class="badge ${badgeClass}">
+                                ${pedido.estado.charAt(0).toUpperCase() + pedido.estado.slice(1)}
+                            </span>
                         </p>
+                        <p class="mb-0"><strong>Total:</strong> $${parseFloat(pedido.total).toFixed(2)}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6>🛍️ Productos del Pedido</h6>
+                    <div>
+                        ${stats.locales > 0 ? `<span class="badge bg-primary me-1">${stats.locales} locales</span>` : ''}
+                        ${stats.externos > 0 ? `<span class="badge bg-warning">${stats.externos} externos</span>` : ''}
                     </div>
                 </div>
                 
-                <div class="row mt-3">
-                    <div class="col-md-12">
-                        <h6>Productos del Pedido</h6>
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Producto</th>
-                                    <th>Cantidad</th>
-                                    <th>Precio Unitario</th>
-                                    <th>Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${productosHTML}
-                                ${productos && productos.length > 0 ? `
-                                <tr class="table-primary">
-                                    <td colspan="3" class="text-end"><strong>Total:</strong></td>
-                                    <td><strong>$${parseFloat(pedido.total).toFixed(2)}</strong></td>
-                                </tr>
-                                ` : ''}
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="40%">Producto</th>
+                                <th width="15%">Cantidad</th>
+                                <th width="25%">Precio (Detallado)</th>
+                                <th width="20%">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${productosHTML}
+                            ${productos && productos.length > 0 ? `
+                            <tr class="table-success">
+                                <td colspan="3" class="text-end"><strong>Total del Pedido:</strong></td>
+                                <td><strong>$${parseFloat(pedido.total).toFixed(2)}</strong></td>
+                            </tr>
+                            ` : ''}
+                        </tbody>
+                    </table>
                 </div>
-            `;
+            </div>
+        </div>
 
-            document.getElementById('detalle-pedido-content').innerHTML = contenido;
-        }
+        ${stats.externos > 0 ? `
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <div class="alert alert-info">
+                    <h6>🌐 Información de Productos Externos</h6>
+                    <small class="text-muted">
+                        <strong>Los productos externos incluyen todos los costos de importación:</strong><br>
+                        • Precio original del producto<br>
+                        • Flete marítimo internacional<br>
+                        • Seguro (2% del valor)<br>
+                        • Impuestos de aduana (varía por categoría)<br>
+                        • Costos de almacenaje y manejo<br><br>
+                        <strong>Tiempo estimado de entrega:</strong> 15-30 días hábiles
+                    </small>
+                </div>
+            </div>
+        </div>
+        ` : ''}
+    `;
+
+    document.getElementById('detalle-pedido-content').innerHTML = contenido;
+}
 
         // Función para formatear fecha
         function formatDate(dateString) {
