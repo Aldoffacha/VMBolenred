@@ -28,67 +28,70 @@ $stmt = $db->prepare("
 $stmt->execute();
 $pedidos_recientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
-<?php include '../../includes/header.php'; ?>
-<?php $pageTitle = "Panel Empleado"; ?>
 
-<div class="container-fluid">
+<?php $pageTitle = "Panel Empleado"; ?>
+<?php include '../../includes/header.php'; ?>
+
+
+<div class="container-fluid" id="main-container">
     <div class="row flex-grow-1 m-0">
         <?php include '../../includes/sidebar.php'; ?>
-        
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
             <div class="d-flex justify-content-between flex-wrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h2>👨‍💼 Panel de Empleado</h2>
-                <span class="badge bg-primary">Bienvenido, <?php echo $_SESSION['nombre']; ?></span>
+                <div class="d-flex align-items-center gap-3">
+                    <h2 class="mb-0">👨‍💼 Panel de Empleado</h2>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary fs-6">Bienvenido, <?php echo $_SESSION['nombre']; ?></span>
+                    <button id="theme-toggle-new" class="btn btn-info btn-sm ms-2" title="Cambiar tema claro/oscuro">
+                        <i class="fas fa-sun"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Estadísticas Rápidas -->
-            <div class="row mb-4">
-                <div class="col-xl-3 col-md-6 mb-4">
-                    <div class="card border-left-primary shadow h-100 py-2">
+            <div class="row mb-4 g-4">
+                <div class="col-xl-3 col-md-6">
+                    <div class="card stat-card border-0 border-custom-primary">
                         <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                        Pedidos Pendientes</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <div class="text-xs fw-bold text-primary text-uppercase mb-1">Pedidos Pendientes</div>
+                                    <div class="h4 mb-0 fw-bold stat-value">
                                         <?php echo $total_pedidos; ?>
                                     </div>
                                 </div>
-                                <div class="col-auto">
-                                    <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
+                                <div class="icon-circle bg-primary bg-opacity-10">
+                                    <i class="fas fa-shopping-cart fa-2x text-primary"></i>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <div class="col-xl-3 col-md-6 mb-4">
-                    <div class="card border-left-success shadow h-100 py-2">
+                <div class="col-xl-3 col-md-6">
+                    <div class="card stat-card border-0 border-custom-success">
                         <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                        Cotizaciones Hoy</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <div class="text-xs fw-bold text-success text-uppercase mb-1">Cotizaciones Hoy</div>
+                                    <div class="h4 mb-0 fw-bold stat-value">
                                         <?php echo $cotizaciones_hoy; ?>
                                     </div>
                                 </div>
-                                <div class="col-auto">
-                                    <i class="fas fa-file-invoice-dollar fa-2x text-gray-300"></i>
+                                <div class="icon-circle bg-success bg-opacity-10">
+                                    <i class="fas fa-file-invoice-dollar fa-2x text-success"></i>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <div class="col-xl-3 col-md-6 mb-4">
-                    <div class="card border-left-warning shadow h-100 py-2">
+                <div class="col-xl-3 col-md-6">
+                    <div class="card stat-card border-0 border-custom-warning">
                         <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                        Clientes Nuevos (Mes)</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <div class="text-xs fw-bold text-warning text-uppercase mb-1">Clientes Nuevos (Mes)</div>
+                                    <div class="h4 mb-0 fw-bold stat-value">
                                         <?php 
                                         $stmt = $db->prepare("SELECT COUNT(*) as total FROM clientes WHERE EXTRACT(MONTH FROM fecha_registro) = EXTRACT(MONTH FROM CURRENT_DATE)");
                                         $stmt->execute();
@@ -96,22 +99,20 @@ $pedidos_recientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         ?>
                                     </div>
                                 </div>
-                                <div class="col-auto">
-                                    <i class="fas fa-user-plus fa-2x text-gray-300"></i>
+                                <div class="icon-circle bg-warning bg-opacity-10">
+                                    <i class="fas fa-user-plus fa-2x text-warning"></i>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <div class="col-xl-3 col-md-6 mb-4">
-                    <div class="card border-left-info shadow h-100 py-2">
+                <div class="col-xl-3 col-md-6">
+                    <div class="card stat-card border-0 border-custom-info">
                         <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                        Ingresos del Mes</div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <div class="text-xs fw-bold text-info text-uppercase mb-1">Ingresos del Mes</div>
+                                    <div class="h4 mb-0 fw-bold stat-value">
                                         $<?php 
                                         $stmt = $db->prepare("SELECT COALESCE(SUM(total), 0) as total FROM pedidos WHERE EXTRACT(MONTH FROM fecha) = EXTRACT(MONTH FROM CURRENT_DATE) AND estado = 'completado'");
                                         $stmt->execute();
@@ -119,8 +120,8 @@ $pedidos_recientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         ?>
                                     </div>
                                 </div>
-                                <div class="col-auto">
-                                    <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                                <div class="icon-circle bg-info bg-opacity-10">
+                                    <i class="fas fa-dollar-sign fa-2x text-info"></i>
                                 </div>
                             </div>
                         </div>
@@ -319,6 +320,86 @@ $pedidos_recientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 </div>
 
+
+
+<style>
+    /* Modo oscuro por defecto */
+    body, #main-container {
+        background-color: #181a1b !important;
+        color: #e0e0e0 !important;
+    }
+    .stat-card {
+        border-radius: 1rem;
+        transition: box-shadow 0.2s;
+        background: #23272b;
+        box-shadow: 0 2px 8px 0 #0dcaf0;
+    }
+    .stat-card:hover {
+        box-shadow: 0 0 0.5rem 0.1rem #0dcaf0;
+    }
+    /* Tarjetas generales (modales) modo oscuro */
+    .card, .card-header, .card-body {
+        background-color: #23272b !important;
+        color: #e0e0e0 !important;
+        border-color: #0dcaf0 !important;
+    }
+    /* Tarjetas modo claro */
+    .light-mode .card, .light-mode .card-header, .light-mode .card-body {
+        background-color: #fff !important;
+        color: #222 !important;
+        border-color: #e3e8f0 !important;
+    }
+    .icon-circle {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #0dcaf0;
+    }
+    .stat-value {
+        font-size: 2rem;
+    }
+    /* Bordes personalizados modo oscuro (celeste) */
+    .border-custom-primary { border: 2px solid #0dcaf0 !important; }
+    .border-custom-success { border: 2px solid #0dcaf0 !important; }
+    .border-custom-warning { border: 2px solid #0dcaf0 !important; }
+    .border-custom-info { border: 2px solid #0dcaf0 !important; }
+    .btn-outline-secondary, .btn-info { border-color: #0dcaf0 !important; color: #0dcaf0 !important; }
+    .btn-outline-secondary:hover, .btn-info:hover { background: #0dcaf0 !important; color: #23272b !important; }
+    /* Icono del botón de tema */
+    #theme-toggle-new .fa-sun { display: inline; }
+    #theme-toggle-new .fa-moon { display: none; }
+
+    /* Modo claro */
+    body.light-mode, .light-mode #main-container {
+        background-color: #f8f9fa !important;
+        color: #222 !important;
+    }
+    .light-mode .stat-card {
+        background: #fff;
+        box-shadow: 0 2px 8px 0 #e3e8f0;
+    }
+    .light-mode .stat-card:hover {
+        box-shadow: 0 0 0.5rem 0.1rem #0d6efd33;
+    }
+    .light-mode .icon-circle {
+        background: #f0f4fa;
+    }
+    /* Bordes personalizados modo claro (blanco) */
+    .light-mode .border-custom-primary { border: 2px solid #fff !important; }
+    .light-mode .border-custom-success { border: 2px solid #fff !important; }
+    .light-mode .border-custom-warning { border: 2px solid #fff !important; }
+    .light-mode .border-custom-info { border: 2px solid #fff !important; }
+    .light-mode .btn-outline-secondary, .light-mode .btn-info { border-color: #0d6efd !important; color: #0d6efd !important; }
+    .light-mode .btn-outline-secondary:hover, .light-mode .btn-info:hover { background: #0d6efd !important; color: #fff !important; }
+    /* Icono del botón de tema */
+    .light-mode #theme-toggle-new .fa-sun { display: none; }
+    .light-mode #theme-toggle-new .fa-moon { display: inline; }
+</style>
+
+
 <script>
 function procesarPedido(id) {
     if (confirm('¿Estás seguro de procesar este pedido?')) {
@@ -336,7 +417,7 @@ function completarPedido(id) {
     }
 }
 
-// Marcar tareas como completadas
+// Marcar tareas como completadas y alternar tema
 document.addEventListener('DOMContentLoaded', function() {
     const checkboxes = document.querySelectorAll('.form-check-input');
     checkboxes.forEach(checkbox => {
@@ -349,6 +430,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.parentElement.style.color = '';
             }
         });
+    });
+
+    // Nuevo botón de tema
+    const themeToggle = document.getElementById('theme-toggle-new');
+    const body = document.body;
+    // Por defecto inicia en modo oscuro
+    if (!body.classList.contains('light-mode')) {
+        body.classList.remove('light-mode');
+    }
+    function setTheme(light) {
+        if (light) {
+            body.classList.add('light-mode');
+            body.classList.remove('dark-mode');
+            localStorage.setItem('theme', 'light');
+        } else {
+            body.classList.remove('light-mode');
+            body.classList.add('dark-mode');
+            localStorage.setItem('theme', 'dark');
+        }
+    }
+    // Inicializar tema
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+        setTheme(true);
+    } else {
+        setTheme(false);
+    }
+    themeToggle.addEventListener('click', function() {
+        setTheme(!body.classList.contains('light-mode'));
     });
 });
 </script>
