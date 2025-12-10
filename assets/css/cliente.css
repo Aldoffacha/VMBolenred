@@ -485,6 +485,11 @@ body.modo-claro .cliente-dashboard .card {
 .sidebar {
     background: var(--page-bg) !important;
     border-right: 2px solid var(--accent-primary) !important;
+    position: sticky !important;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 998;
 }
 
 .sidebar .nav-link {

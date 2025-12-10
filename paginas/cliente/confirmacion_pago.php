@@ -63,14 +63,38 @@ $pago = $stmt->fetch();
                                 <p><strong>Estado:</strong> <span class="badge bg-warning"><?php echo ucfirst($pedido['estado']); ?></span></p>
                                 
                                 <?php if ($pago && $pago['metodo'] == 'qr'): ?>
-                                <div class="mt-3">
-                                    <h6>📱 Código QR para Pago:</h6>
-                                    <div class="bg-light p-3 rounded text-center">
-                                        <div style="font-family: monospace; font-size: 18px; letter-spacing: 2px;">
-                                            <?php echo $pago['codigo_qr']; ?>
+                                <div class="mt-3 text-center">
+                                    <h6>📱 Código QR para Pago</h6>
+                                    <div class="p-3 rounded text-center">
+                                        <!-- Mostrar imagen QR general -->
+                                        <img src="../../assets/img/qr_general.jpg" alt="QR Banco" class="img-fluid" style="max-width:260px;">
+                                        <div class="mt-2">
+                                            <strong>Monto a pagar:</strong> $<?php echo number_format($pedido['total'],2); ?>
                                         </div>
-                                        <small class="text-muted">Muestra este código al momento del pago</small>
+                                        <small class="text-muted d-block mt-2">Escanea el QR con tu app bancaria y realiza el pago.</small>
                                     </div>
+
+                                    <?php if ($pago['estado'] == 'pendiente' || empty($pago['comprobante'])): ?>
+                                    <div class="mt-3">
+                                        <form method="POST" action="../../procesos/subir_comprobante_pago.php" enctype="multipart/form-data">
+                                            <input type="hidden" name="id_pago" value="<?php echo $pago['id_pago']; ?>">
+                                            <input type="hidden" name="id_pedido" value="<?php echo $id_pedido; ?>">
+                                            <div class="mb-3">
+                                                <label for="comprobante" class="form-label">Subir comprobante de pago (imagen)</label>
+                                                <input type="file" name="comprobante" id="comprobante" accept="image/*" class="form-control" required>
+                                            </div>
+                                            <button type="submit" name="subir" class="btn btn-primary">📤 Subir comprobante</button>
+                                        </form>
+                                    </div>
+                                    <?php elseif (!empty($pago['comprobante'])): ?>
+                                    <div class="mt-3">
+                                        <h6>Comprobante subido</h6>
+                                        <a href="../../uploads/payments/<?php echo htmlspecialchars($pago['comprobante']); ?>" target="_blank">
+                                            <img src="../../uploads/payments/<?php echo htmlspecialchars($pago['comprobante']); ?>" alt="Comprobante" class="img-fluid" style="max-width:260px;">
+                                        </a>
+                                        <p class="text-muted mt-2">Esperando confirmación del admin.</p>
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
                                 <?php endif; ?>
                             </div>

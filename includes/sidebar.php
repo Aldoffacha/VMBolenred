@@ -30,6 +30,11 @@
     </a>
 </li>
 <li class="nav-item">
+    <a class="nav-link <?php echo $current_page == 'pagos.php' ? 'active' : ''; ?>" href="pagos.php">
+        <i class="fas fa-credit-card me-2"></i> Pagos
+    </a>
+</li>
+<li class="nav-item">
     <a class="nav-link <?php echo $current_page == 'cotizaciones.php' ? 'active' : ''; ?>" href="cotizaciones.php">
         <i class="fas fa-file-invoice-dollar me-2"></i> Cotizaciones
     </a>

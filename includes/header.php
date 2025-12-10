@@ -13,12 +13,28 @@ require_once '../../includes/notificaciones.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($pageTitle) ? $pageTitle . ' - VMBol en Red' : 'VMBol en Red - Sistema de Importación'; ?></title>
+    <!-- Bootstrap PRIMERO -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tus CSS DESPUÉS (para que sobrescriban a Bootstrap) -->
     <link rel="stylesheet" href="../../assets/css/main.css">
 <?php if (isset($_SESSION['rol'])): ?>
-<link rel="stylesheet" href="../../assets/css/<?php echo $_SESSION['rol']; ?>.css">
+    <link rel="stylesheet" href="../../assets/css/<?php echo $_SESSION['rol']; ?>.css">
 <?php endif; ?>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Script para aplicar tema ANTES de renderizar (evita flash) -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem('vmbolenred_theme') || 'dark';
+            const html = document.documentElement;
+            html.setAttribute('data-theme', theme);
+            
+            // También preparar la clase para cuando se cargue el body
+            if (theme === 'light') {
+                html.classList.add('theme-light-pending');
+            }
+        })();
+    </script>
 </head>
 <body class="d-flex flex-column h-100 <?php echo isset($_SESSION['rol']) ? $_SESSION['rol'] . '-dashboard' : 'public-page'; ?>">
     <?php if (isset($_SESSION['user_id'])): 

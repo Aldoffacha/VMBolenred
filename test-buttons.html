@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Botones Tema</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column h-100">
+    <div class="container mt-5">
+        <h1>Test de Botones - Cambio de Tema</h1>
+        
+        <div class="test-section">
+            <h3>Botones Primary</h3>
+            <button class="btn btn-primary me-2">Agregar Empleado</button>
+            <button class="btn btn-primary me-2">Agregar Producto</button>
+            <button class="btn btn-primary me-2">Guardar Cambios</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Botones Outline Primary</h3>
+            <button class="btn btn-outline-primary me-2">Editar</button>
+            <button class="btn btn-outline-primary me-2">Ver Detalles</button>
+            <button class="btn btn-outline-primary me-2">Cancelar</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Otros Botones</h3>
+            <button class="btn btn-success me-2">Éxito</button>
+            <button class="btn btn-danger me-2">Eliminar</button>
+            <button class="btn btn-warning me-2">Advertencia</button>
+            <button class="btn btn-info me-2">Info</button>
+            <button class="btn btn-secondary me-2">Secundario</button>
+        </div>
+        
+        <div class="test-section">
+            <button class="btn btn-lg btn-primary" onclick="toggleTheme()">
+                Cambiar Tema (Click aquí)
+            </button>
+            <p class="mt-3">
+                <strong>Tema actual:</strong> <span id="current-theme">Oscuro</span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme') || 'dark';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            
+            html.setAttribute('data-theme', newTheme);
+            
+            const body = document.body;
+            body.classList.remove('modo-claro', 'modo-oscuro');
+            body.classList.add(newTheme === 'light' ? 'modo-claro' : 'modo-oscuro');
+            
+            document.getElementById('current-theme').textContent = 
+                newTheme === 'light' ? 'Claro' : 'Oscuro';
+            
+            localStorage.setItem('vmbolenred_theme', newTheme);
+        }
+        
+        // Aplicar tema guardado al cargar
+        const savedTheme = localStorage.getItem('vmbolenred_theme') || 'dark';
+        const html = document.documentElement;
+        html.setAttribute('data-theme', savedTheme);
+        
+        const body = document.body;
+        body.classList.add(savedTheme === 'light' ? 'modo-claro' : 'modo-oscuro');
+        
+        document.getElementById('current-theme').textContent = 
+            savedTheme === 'light' ? 'Claro' : 'Oscuro';
+    </script>
+</body>
+</html>

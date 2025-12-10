@@ -47,6 +47,11 @@ if (preg_match('/Chrome/i', $user_agent) && !preg_match('/Edg/i', $user_agent)) 
 
 $info_equipo = "$equipo - $navegador";
 
+// CSRF token para formularios
+if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+if (empty($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
+$csrf_token = $_SESSION['csrf_token'];
+
 // Obtener configuración actual
 $configStmt = $db->query("SELECT * FROM configuracion WHERE id = 1");
 $config = $configStmt->fetch(PDO::FETCH_ASSOC);
@@ -127,6 +132,139 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $config['email_contacto'] = $email_contacto;
                 $config['telefono_contacto'] = $telefono_contacto;
                 $config['moneda'] = $moneda;
+                break;
+                
+            case 'actualizar_qr':
+                // Verificar CSRF
+                if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+                    $_SESSION['mensaje'] = 'Token inválido. Recarga la página e intenta de nuevo.';
+                    break;
+                }
+
+                // Manejar subida de imagen QR por el admin
+                if (!isset($_FILES['qr_image']) || $_FILES['qr_image']['error'] !== UPLOAD_ERR_OK) {
+                    $_SESSION['mensaje'] = 'No se seleccionó ninguna imagen o ocurrió un error en la subida.';
+                    break;
+                }
+
+                $tmp = $_FILES['qr_image']['tmp_name'];
+                $size = $_FILES['qr_image']['size'];
+                $maxSize = 2 * 1024 * 1024; // 2MB
+
+                if ($size > $maxSize) {
+                    $_SESSION['mensaje'] = 'El archivo es demasiado grande. Máx 2MB.';
+                    break;
+                }
+
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_file($finfo, $tmp);
+                finfo_close($finfo);
+
+                $allowed = ['image/jpeg', 'image/png', 'image/webp'];
+                if (!in_array($mime, $allowed)) {
+                    $_SESSION['mensaje'] = 'Formato no soportado. Use JPG, PNG o WEBP.';
+                    break;
+                }
+
+                // Asegurar directorio de destino para versiones
+                $uploadDir = __DIR__ . '/../../uploads/qr/';
+                if (!is_dir($uploadDir)) { @mkdir($uploadDir, 0755, true); }
+
+                // Determinar extensión de salida (guardaremos como JPG por consistencia)
+                $ext = 'jpg';
+                $filename = 'qr_' . time() . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
+                $targetPath = $uploadDir . $filename;
+
+                // Leer imagen y redimensionar si es necesario (max 1200px)
+                $data = @file_get_contents($tmp);
+                if ($data === false) {
+                    $_SESSION['mensaje'] = 'No se pudo leer el archivo temporal.';
+                    break;
+                }
+
+                $srcImg = @imagecreatefromstring($data);
+                if ($srcImg === false) {
+                    // Fallback: intentar mover el archivo crudo al directorio (no ideal, pero evita pérdida)
+                    if (@move_uploaded_file($tmp, $targetPath)) {
+                        $_SESSION['mensaje'] = 'QR actualizado correctamente (sin conversión).';
+                    } else {
+                        $_SESSION['mensaje'] = 'No se pudo guardar la imagen del QR.';
+                    }
+                    break;
+                }
+
+                $w = imagesx($srcImg);
+                $h = imagesy($srcImg);
+                $maxDim = 1200;
+                if ($w > $maxDim || $h > $maxDim) {
+                    if ($w >= $h) {
+                        $nw = $maxDim;
+                        $nh = intval($h * ($maxDim / $w));
+                    } else {
+                        $nh = $maxDim;
+                        $nw = intval($w * ($maxDim / $h));
+                    }
+                } else {
+                    $nw = $w; $nh = $h;
+                }
+
+                $dst = imagecreatetruecolor($nw, $nh);
+                // preservar transparencia para png/webp
+                imagefill($dst, 0, 0, imagecolorallocate($dst, 255, 255, 255));
+                imagecopyresampled($dst, $srcImg, 0, 0, 0, 0, $nw, $nh, $w, $h);
+
+                $saved = @imagejpeg($dst, $targetPath, 90);
+                imagedestroy($srcImg);
+                imagedestroy($dst);
+
+                if (!$saved) {
+                    $_SESSION['mensaje'] = 'No se pudo convertir/guardar la imagen del QR.';
+                    break;
+                }
+
+                @chmod($targetPath, 0644);
+
+                // Intentar registrar el nombre en la tabla configuracion
+                try {
+                    // Añadir columna si no existe (no provoca error fatal si falla)
+                    try {
+                        $db->exec("ALTER TABLE configuracion ADD COLUMN qr_filename VARCHAR(255) NULL");
+                    } catch (PDOException $e) {
+                        // ignorar si ya existe o no se puede agregar
+                    }
+
+                    $stmt_up = $db->prepare("UPDATE configuracion SET qr_filename = ? WHERE id = 1");
+                    $stmt_up->execute([$filename]);
+
+                    // Actualizar variable local para mostrar en la misma carga
+                    $config['qr_filename'] = $filename;
+
+                    // Auditoría
+                    $query = "INSERT INTO auditoria 
+                                 (tabla_afectada, id_registro, accion, datos_nuevos, id_usuario, tipo_usuario, ip_address) 
+                                 VALUES (:tabla, :id_registro, :accion, :datos_nuevos, :id_usuario, :tipo_usuario, :ip_address)";
+                    $stmt_audit = $db->prepare($query);
+                    $stmt_audit->execute([
+                        ':tabla' => 'configuracion',
+                        ':id_registro' => 1,
+                        ':accion' => 'UPDATE_QR',
+                        ':datos_nuevos' => json_encode(['archivo' => 'uploads/qr/' . $filename, 'admin_id' => $admin_id, 'fecha' => date('Y-m-d H:i:s')], JSON_PRETTY_PRINT),
+                        ':id_usuario' => $admin_id,
+                        ':tipo_usuario' => 'admin',
+                        ':ip_address' => $ip_address
+                    ]);
+
+                    $_SESSION['mensaje'] = 'QR actualizado correctamente.';
+
+                } catch (PDOException $e) {
+                    // Si hay error en DB, dejar fallback y mostrar mensaje
+                    error_log('❌ Error al actualizar configuracion.qr_filename: ' . $e->getMessage());
+                    // fallback: copiar a assets/img/qr_general.jpg para compatibilidad
+                    $fallbackPath = __DIR__ . '/../../assets/img/qr_general.jpg';
+                    @copy($targetPath, $fallbackPath);
+                    $_SESSION['mensaje'] = 'QR guardado, pero no se pudo registrar en la base de datos (ver logs).';
+                }
+
                 break;
                 
             case 'agregar_deposito':
@@ -241,6 +379,11 @@ $tiendas = $db->query("SELECT * FROM tiendas_usa WHERE estado = 1")->fetchAll(PD
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuración - VMBol en Red</title>
+    <!-- Bootstrap PRIMERO -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tus CSS DESPUÉS (para que sobrescriban a Bootstrap) -->
     <link rel="stylesheet" href="../../assets/css/main.css">
     <link rel="stylesheet" href="../../assets/css/admin.css">
 </head>
@@ -303,7 +446,80 @@ $tiendas = $db->query("SELECT * FROM tiendas_usa WHERE estado = 1")->fetchAll(PD
                                     <button type="submit" class="btn btn-primary">Guardar Configuración</button>
                                 </form>
                             </div>
-                        </div>
+                            </div>
+
+                            <!-- Código QR del Banco (Mostrar y actualizar) -->
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">Código QR de Pago</h5>
+                                </div>
+                                <div class="card-body">
+                                    <?php
+                                        $qrFsFallback = __DIR__ . '/../../assets/img/qr_general.jpg';
+                                        $qrWebFallback = '../../assets/img/qr_general.jpg';
+                                        $qrUploadFsDir = __DIR__ . '/../../uploads/qr/';
+                                        $qrWebDir = '../../uploads/qr/';
+
+                                        $qrWebPath = $qrWebFallback;
+                                        $qrExists = false;
+                                        if (!empty($config['qr_filename'])) {
+                                            $candidateFs = $qrUploadFsDir . $config['qr_filename'];
+                                            if (file_exists($candidateFs)) {
+                                                $qrWebPath = $qrWebDir . $config['qr_filename'];
+                                                $qrExists = true;
+                                            }
+                                        }
+
+                                        if (!$qrExists && file_exists($qrFsFallback)) {
+                                            $qrWebPath = $qrWebFallback;
+                                            $qrExists = true;
+                                        }
+                                    ?>
+                                    <div class="mb-3">
+                                        <label class="form-label">QR Actual</label>
+                                        <div>
+                                            <?php if ($qrExists): ?>
+                                                <img id="qr_current" src="<?php echo $qrWebPath; ?>" alt="QR de Pago" style="max-width:280px;" class="img-fluid border">
+                                            <?php else: ?>
+                                                <div class="text-muted">No se ha subido ningún QR todavía.</div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+
+                                    <form method="POST" enctype="multipart/form-data">
+                                        <input type="hidden" name="accion" value="actualizar_qr">
+                                        <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                                        <div class="mb-3">
+                                            <label for="qr_image" class="form-label">Subir nuevo QR (JPG / PNG / WEBP) — Máx 2MB</label>
+                                            <input type="file" class="form-control" id="qr_image" name="qr_image" accept="image/*" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Preview</label>
+                                            <div>
+                                                <img id="qr_preview" src="#" alt="Preview QR" style="max-width:280px; display:none;" class="img-fluid border">
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">Actualizar QR</button>
+                                    </form>
+
+                                    <script>
+                                        (function(){
+                                            const input = document.getElementById('qr_image');
+                                            const preview = document.getElementById('qr_preview');
+                                            let prevUrl = null;
+                                            if (!input) return;
+                                            input.addEventListener('change', function(e){
+                                                const f = this.files && this.files[0];
+                                                if (!f) { preview.style.display='none'; return; }
+                                                if (prevUrl) URL.revokeObjectURL(prevUrl);
+                                                prevUrl = URL.createObjectURL(f);
+                                                preview.src = prevUrl;
+                                                preview.style.display = 'block';
+                                            });
+                                        })();
+                                    </script>
+                                </div>
+                            </div>
                     </div>
 
                     <!-- Gestión de Depósitos -->

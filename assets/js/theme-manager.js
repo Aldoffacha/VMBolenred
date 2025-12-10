@@ -1,7 +1,7 @@
 // theme-manager.js - Gestor de temas persistente
 class ThemeManager {
     constructor() {
-        this.themeKey = 'cliente-theme';
+        this.themeKey = 'vmbolenred_theme'; // Consistente con el script del head
         this.init();
     }
 
@@ -24,13 +24,19 @@ class ThemeManager {
 
     applyTheme(theme) {
         const body = document.body;
+        const html = document.documentElement;
         
+        // Limpiar ambas clases primero
+        body.classList.remove('modo-claro', 'modo-oscuro');
+        html.removeAttribute('data-theme');
+        
+        // Aplicar la correcta
         if (theme === 'light') {
             body.classList.add('modo-claro');
-            body.classList.remove('modo-oscuro');
+            html.setAttribute('data-theme', 'light');
         } else {
-            body.classList.remove('modo-claro');
             body.classList.add('modo-oscuro');
+            html.setAttribute('data-theme', 'dark');
         }
     }
 
