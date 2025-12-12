@@ -121,10 +121,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ':ip_address' => $ip_address
                     ]);
                     
-                    error_log("✅ Auditoría: Configuración general actualizada por admin ID: $admin_id");
+                    error_log("Auditoría: Configuración general actualizada por admin ID: $admin_id");
                     
                 } catch (PDOException $e) {
-                    error_log("❌ Error en auditoría de configuración: " . $e->getMessage());
+                    error_log("Error en auditoría de configuración: " . $e->getMessage());
                 }
                 
                 // Actualizar variable local
@@ -258,7 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 } catch (PDOException $e) {
                     // Si hay error en DB, dejar fallback y mostrar mensaje
-                    error_log('❌ Error al actualizar configuracion.qr_filename: ' . $e->getMessage());
+                    error_log('Error al actualizar configuracion.qr_filename: ' . $e->getMessage());
                     // fallback: copiar a assets/img/qr_general.jpg para compatibilidad
                     $fallbackPath = __DIR__ . '/../../assets/img/qr_general.jpg';
                     @copy($targetPath, $fallbackPath);
@@ -308,10 +308,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ':ip_address' => $ip_address
                     ]);
                     
-                    error_log("✅ Auditoría: Depósito agregado por admin ID: $admin_id");
+                    error_log("Auditoría: Depósito agregado por admin ID: $admin_id");
                     
                 } catch (PDOException $e) {
-                    error_log("❌ Error en auditoría de depósito: " . $e->getMessage());
+                    error_log("Error en auditoría de depósito: " . $e->getMessage());
                 }
                 break;
                 
@@ -356,10 +356,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ':ip_address' => $ip_address
                     ]);
                     
-                    error_log("✅ Auditoría: Tienda agregada por admin ID: $admin_id");
+                    error_log("Auditoría: Tienda agregada por admin ID: $admin_id");
                     
                 } catch (PDOException $e) {
-                    error_log("❌ Error en auditoría de tienda: " . $e->getMessage());
+                    error_log("Error en auditoría de tienda: " . $e->getMessage());
                 }
                 break;
         }
@@ -400,10 +400,16 @@ $tiendas = $db->query("SELECT * FROM tiendas_usa WHERE estado = 1")->fetchAll(PD
                 </div>
 
                 <?php if (isset($_SESSION['mensaje'])): ?>
-                <div class="alert alert-success alert-dismissible fade show">
-                    <?php echo $_SESSION['mensaje']; unset($_SESSION['mensaje']); ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                <script>
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', function() {
+                            showSuccess('<?php echo addslashes($_SESSION['mensaje']); ?>', 5000);
+                        });
+                    } else {
+                        showSuccess('<?php echo addslashes($_SESSION['mensaje']); ?>', 5000);
+                    }
+                </script>
+                <?php unset($_SESSION['mensaje']); ?>
                 <?php endif; ?>
 
                 <div class="row">

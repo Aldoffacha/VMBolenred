@@ -103,8 +103,8 @@ class Notificaciones {
             'pendiente' => '⏳ Pendiente',
             'procesando' => '🔄 En Proceso',
             'enviado' => '🚚 Enviado',
-            'completado' => '✅ Completado',
-            'cancelado' => '❌ Cancelado'
+            'completado' => 'Completado',
+            'cancelado' => 'Cancelado'
         ];
 
         $this->crear(

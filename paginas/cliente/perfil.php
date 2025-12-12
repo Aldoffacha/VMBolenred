@@ -2,6 +2,7 @@
 require_once '../../includes/config.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
+require_once '../../includes/swift-alerts-helper.php';
 
 Auth::checkAuth('cliente');
 $db = (new Database())->getConnection();
@@ -14,6 +15,7 @@ $stmt->execute([$user_id]);
 $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $mensaje = '';
+$mensaje_tipo = '';
 
 // --- Actualizar perfil ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['actualizar_perfil'])) {
@@ -22,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['actualizar_perfil']))
     $direccion = htmlspecialchars(trim($_POST['direccion'] ?? ''));
 
     if (empty($nombre)) {
-        $mensaje = "❌ El nombre es obligatorio";
+        $mensaje = "El nombre es obligatorio";
     } else {
         $stmt = $db->prepare("UPDATE clientes SET nombre = ?, telefono = ?, direccion = ? WHERE id_cliente = ?");
         if ($stmt->execute([$nombre, $telefono, $direccion, $user_id])) {
@@ -30,9 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['actualizar_perfil']))
             $cliente['nombre'] = $nombre;
             $cliente['telefono'] = $telefono;
             $cliente['direccion'] = $direccion;
-            $mensaje = "✅ Perfil actualizado correctamente";
+            $mensaje = "Perfil actualizado correctamente";
         } else {
-            $mensaje = "❌ Error al actualizar el perfil";
+            $mensaje = "Error al actualizar el perfil";
         }
     }
 }
@@ -50,17 +52,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cambiar_foto'])) {
         $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
         
         if (!in_array($extension, $allowedExtensions)) {
-            $mensaje = "❌ Solo se permiten archivos de imagen (JPEG, PNG, GIF).";
+            $mensaje = "Solo se permiten archivos de imagen (JPEG, PNG, GIF).";
         } else {
             // Validar tamaño (máximo 2MB)
             $maxSize = 2 * 1024 * 1024;
             if ($file['size'] > $maxSize) {
-                $mensaje = "❌ El archivo es demasiado grande. Máximo 2MB.";
+                $mensaje = "El archivo es demasiado grande. Máximo 2MB.";
             } else {
                 // Validación adicional: intentar abrir como imagen
                 $imageInfo = @getimagesize($file['tmp_name']);
                 if ($imageInfo === false) {
-                    $mensaje = "❌ El archivo no es una imagen válida.";
+                    $mensaje = "El archivo no es una imagen válida.";
                 } else {
                     // Generar un nombre único para el archivo
                     $filename = 'cliente_' . $user_id . '_' . time() . '.' . $extension;
@@ -82,15 +84,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cambiar_foto'])) {
                         $stmt = $db->prepare("UPDATE clientes SET foto_perfil = ? WHERE id_cliente = ?");
                         if ($stmt->execute([$filename, $user_id])) {
                             $cliente['foto_perfil'] = $filename;
-                            $mensaje = "✅ Foto de perfil actualizada correctamente";
+                            $mensaje = "Foto de perfil actualizada correctamente";
+                            $mensaje_tipo = 'success';
                         } else {
-                            $mensaje = "❌ Error al actualizar la foto en la base de datos";
+                            $mensaje = "Error al actualizar la foto en la base de datos";
+                            $mensaje_tipo = 'danger';
                             // Mostrar error de PostgreSQL
                             $errorInfo = $stmt->errorInfo();
                             $mensaje .= "<br>Error: " . $errorInfo[2];
                         }
                     } else {
-                        $mensaje = "❌ Error al subir el archivo. Verifica los permisos de la carpeta.";
+                        $mensaje = "Error al subir el archivo. Verifica los permisos de la carpeta.";
+                        $mensaje_tipo = 'danger';
                     }
                 }
             }
@@ -107,7 +112,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cambiar_foto'])) {
             UPLOAD_ERR_EXTENSION => 'Una extensión de PHP detuvo la subida del archivo'
         ];
         $errorText = $errorMessages[$error] ?? 'Error desconocido';
-        $mensaje = "❌ Error al subir el archivo: " . $errorText;
+        $mensaje = "Error al subir el archivo: " . $errorText;
+        $mensaje_tipo = 'danger';
     }
 }
 // --- Cambio de contraseña ---
@@ -116,18 +122,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cambiar_password'])) 
     $confirmar = trim($_POST['confirmar_password'] ?? '');
 
     if (empty($nueva) || empty($confirmar)) {
-        $mensaje = "⚠️ Debes llenar ambos campos de contraseña";
+        $mensaje = "Debes llenar ambos campos de contraseña";
+        $mensaje_tipo = 'warning';
     } elseif ($nueva !== $confirmar) {
-        $mensaje = "❌ Las contraseñas no coinciden";
+        $mensaje = "Las contraseñas no coinciden";
+        $mensaje_tipo = 'danger';
     } elseif (strlen($nueva) < 6) {
-        $mensaje = "⚠️ La contraseña debe tener al menos 6 caracteres";
+        $mensaje = "La contraseña debe tener al menos 6 caracteres";
+        $mensaje_tipo = 'warning';
     } else {
         $hash = password_hash($nueva, PASSWORD_BCRYPT);
         $stmt = $db->prepare("UPDATE clientes SET contrasena = ? WHERE id_cliente = ?");
         if ($stmt->execute([$hash, $user_id])) {
-            $mensaje = "✅ Contraseña actualizada correctamente";
+            $mensaje = "Contraseña actualizada correctamente";
+            $mensaje_tipo = 'success';
         } else {
-            $mensaje = "❌ Error al actualizar la contraseña";
+            $mensaje = "Error al actualizar la contraseña";
+            $mensaje_tipo = 'danger';
             $errorInfo = $stmt->errorInfo();
             $mensaje .= "<br>Error: " . $errorInfo[2];
         }
@@ -157,10 +168,15 @@ if (!empty($cliente['foto_perfil']) && file_exists('../../assets/img/logos/' . $
             </div>
 
             <?php if (!empty($mensaje)): ?>
-            <div class="alert alert-<?php echo str_contains($mensaje, '✅') ? 'success' : (str_contains($mensaje, '⚠️') ? 'warning' : 'danger'); ?> alert-dismissible fade show">
-                <?php echo $mensaje; ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
+            <script>
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', function() {
+                        showAlert('<?php echo addslashes($mensaje); ?>', '<?php echo !empty($mensaje_tipo) ? $mensaje_tipo : 'info'; ?>', 5000);
+                    });
+                } else {
+                    showAlert('<?php echo addslashes($mensaje); ?>', '<?php echo !empty($mensaje_tipo) ? $mensaje_tipo : 'info'; ?>', 5000);
+                }
+            </script>
             <?php endif; ?>
 
             <div class="row">
@@ -319,13 +335,13 @@ document.getElementById('inputFoto').addEventListener('change', function(e) {
     const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
     
     if (!hasValidExtension) {
-        alert('❌ Solo se permiten archivos JPG, PNG y GIF');
+        showError('Solo se permiten archivos JPG, PNG y GIF');
         this.value = ''; // Limpiar el input
         return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-        alert('❌ El archivo es demasiado grande (máximo 2MB)');
+        showWarning('El archivo es demasiado grande (máximo 2MB)');
         this.value = ''; // Limpiar el input
         return;
     }
@@ -359,7 +375,7 @@ document.getElementById('formFoto').addEventListener('submit', function(e) {
     const fileInput = document.getElementById('inputFoto');
     if (!fileInput.files.length) {
         e.preventDefault();
-        alert('❌ Por favor selecciona una foto primero');
+        showWarning('Por favor selecciona una foto primero');
     }
 });
 </script>

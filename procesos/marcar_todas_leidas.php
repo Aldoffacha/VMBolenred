@@ -1,10 +1,12 @@
 <?php
+session_start();
+
+header('Content-Type: application/json');
+
 require_once '../includes/config.php';
 require_once '../includes/database.php';
 require_once '../includes/auth.php';
 require_once '../includes/notificaciones.php';
-
-session_start();
 
 // Verificar autenticación pero sin requerir un rol específico
 if (!Auth::isLoggedIn()) {

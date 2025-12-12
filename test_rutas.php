@@ -12,9 +12,9 @@ $archivos = [
 
 foreach ($archivos as $ruta => $nombre) {
     if (file_exists($ruta)) {
-        echo "<p style='color: green;'>✅ $nombre encontrado en: $ruta</p>";
+        echo "<p style='color: green;'>$nombre encontrado en: $ruta</p>";
     } else {
-        echo "<p style='color: red;'>❌ $nombre NO encontrado en: $ruta</p>";
+        echo "<p style='color: red;'>$nombre NO encontrado en: $ruta</p>";
     }
 }
 

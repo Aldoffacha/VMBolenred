@@ -2,6 +2,7 @@
 require_once '../../includes/config.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
+require_once '../../includes/swift-alerts-helper.php';
 
 // Función para obtener el tipo de cambio actual
 function obtenerTipoCambio() {
@@ -1408,7 +1409,7 @@ function mostrarCarrito() {
 }
 
 function mostrarSeguimiento(idPedido) {
-    alert(`Seguimiento del pedido #VM${idPedido}\n\nEsta funcionalidad estará disponible pronto.`);
+    showInfo(`Seguimiento del pedido #VM${idPedido} - Esta funcionalidad estará disponible pronto.`);
 }
 
 // FUNCIÓN CORREGIDA - Ahora maneja correctamente todos los parámetros
@@ -1633,7 +1634,7 @@ function confirmarAgregarCarrito() {
     const cantidad = parseInt(document.getElementById('cantidadProducto').value);
     
     if (cantidad < 1) {
-        alert('Por favor selecciona una cantidad válida');
+        showWarning('Por favor selecciona una cantidad válida');
         return;
     }
     
@@ -1700,7 +1701,7 @@ function confirmarAgregarCarrito() {
             if (modal) modal.hide();
             
             // Mostrar mensaje de éxito
-            alert(`✅ ${data.message}`);
+            showSuccess(data.message);
             
             // Actualizar contador del carrito
             actualizarContadorCarrito();
@@ -1712,12 +1713,12 @@ function confirmarAgregarCarrito() {
                 }, 1500);
             }
         } else {
-            alert(`❌ ${data.message}`);
+            alert(data.message);
         }
     })
     .catch(error => {
         console.error('Error completo:', error);
-        alert('❌ Error de conexión: ' + error.message);
+        showError('Error de conexión: ' + error.message);
     });
 }
 
@@ -1737,7 +1738,7 @@ function obtenerInfoProducto() {
     const url = document.getElementById('urlProductoExterno').value.trim();
     
     if (!url) {
-        alert('Por favor ingresa una URL válida');
+        showWarning('Por favor ingresa una URL válida');
         return;
     }
     
@@ -1769,14 +1770,14 @@ function obtenerInfoProducto() {
             // Habilitar botón de agregar
             document.getElementById('btnAgregarExterno').disabled = false;
             
-            alert('✅ Información del producto obtenida correctamente');
+            showSuccess('Información del producto obtenida correctamente');
         } else {
-            alert('❌ ' + data.message);
+            showError(data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('❌ Error al obtener información del producto');
+        showError('Error al obtener información del producto');
     })
     .finally(() => {
         // Restaurar botón
@@ -1795,7 +1796,7 @@ function calcularCotizacionExterno() {
     const alto = parseFloat(document.getElementById('altoProductoExterno').value) || 0;
     
     if (precio <= 0 || peso <= 0) {
-        alert('Complete precio y peso correctamente');
+        showWarning('Complete precio y peso correctamente');
         return;
     }
 
@@ -1860,7 +1861,7 @@ function agregarProductoExterno() {
     const alto = parseFloat(document.getElementById('altoProductoExterno').value) || 0;
     
     if (!url || precio <= 0) {
-        alert('Complete todos los campos correctamente');
+        showWarning('Complete todos los campos correctamente');
         return;
     }
     
@@ -1887,7 +1888,7 @@ function agregarProductoExterno() {
             modal.hide();
             
             // Mostrar mensaje de éxito
-            alert(`✅ ${data.message}`);
+            showSuccess(data.message);
             
             // Actualizar contador del carrito
             actualizarContadorCarrito();
@@ -1897,12 +1898,12 @@ function agregarProductoExterno() {
                 window.location.reload();
             }, 1500);
         } else {
-            alert(`❌ ${data.message}`);
+            showError(data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('❌ Error de conexión');
+        showError('Error de conexión');
     });
 }
 
@@ -1926,7 +1927,7 @@ function calcularCotizacion() {
     }
     
     if (precio <= 0 || peso <= 0) {
-        alert('Complete precio y peso correctamente');
+        showWarning('Complete precio y peso correctamente');
         return;
     }
 

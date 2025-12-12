@@ -2,6 +2,7 @@
 require_once '../../includes/config.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
+require_once '../../includes/swift-alerts-helper.php';
 
 Auth::checkAuth('cliente');
 $db = (new Database())->getConnection();
@@ -18,18 +19,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($cantidad > 0) {
             $stmt = $db->prepare("UPDATE carrito SET cantidad = ? WHERE id_carrito = ? AND id_cliente = ?");
             $stmt->execute([$cantidad, $id_carrito, $user_id]);
-            $mensaje = "✅ Cantidad actualizada";
+            $mensaje = "Cantidad actualizada";
         } else {
             $stmt = $db->prepare("DELETE FROM carrito WHERE id_carrito = ? AND id_cliente = ?");
             $stmt->execute([$id_carrito, $user_id]);
-            $mensaje = "✅ Producto eliminado del carrito";
+            $mensaje = "Producto eliminado del carrito";
         }
     }
     elseif (isset($_POST['eliminar_item']) && isset($_POST['id_carrito'])) {
         $id_carrito = intval($_POST['id_carrito']);
         $stmt = $db->prepare("DELETE FROM carrito WHERE id_carrito = ? AND id_cliente = ?");
         $stmt->execute([$id_carrito, $user_id]);
-        $mensaje = "✅ Producto eliminado del carrito";
+        $mensaje = "Producto eliminado del carrito";
     }
     elseif (isset($_POST['vaciar_carrito'])) {
         // Vaciar tanto carrito local como externo
@@ -39,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt = $db->prepare("DELETE FROM carrito_externo WHERE id_cliente = ?");
         $stmt->execute([$user_id]);
         
-        $mensaje = "✅ Carrito vaciado completamente";
+        $mensaje = "Carrito vaciado completamente";
     }
     // Procesar acciones para productos externos
     elseif (isset($_POST['actualizar_cantidad_externo']) && isset($_POST['id_carrito_externo'])) {
@@ -49,18 +50,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($cantidad > 0) {
             $stmt = $db->prepare("UPDATE carrito_externo SET cantidad = ? WHERE id_carrito_externo = ? AND id_cliente = ?");
             $stmt->execute([$cantidad, $id_carrito_externo, $user_id]);
-            $mensaje = "✅ Cantidad actualizada";
+            $mensaje = "Cantidad actualizada";
         } else {
             $stmt = $db->prepare("DELETE FROM carrito_externo WHERE id_carrito_externo = ? AND id_cliente = ?");
             $stmt->execute([$id_carrito_externo, $user_id]);
-            $mensaje = "✅ Producto externo eliminado del carrito";
+            $mensaje = "Producto externo eliminado del carrito";
         }
     }
     elseif (isset($_POST['eliminar_item_externo']) && isset($_POST['id_carrito_externo'])) {
         $id_carrito_externo = intval($_POST['id_carrito_externo']);
         $stmt = $db->prepare("DELETE FROM carrito_externo WHERE id_carrito_externo = ? AND id_cliente = ?");
         $stmt->execute([$id_carrito_externo, $user_id]);
-        $mensaje = "✅ Producto externo eliminado del carrito";
+        $mensaje = "Producto externo eliminado del carrito";
     }
 }
 
@@ -147,7 +148,15 @@ function calcularCostoImportacion($precio, $peso, $categoria) {
             </div>
 
             <?php if ($mensaje): ?>
-            <div class="alert alert-success"><?php echo $mensaje; ?></div>
+            <script>
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', function() {
+                        showAlert('<?php echo addslashes($mensaje); ?>', 'success', 5000);
+                    });
+                } else {
+                    showAlert('<?php echo addslashes($mensaje); ?>', 'success', 5000);
+                }
+            </script>
             <?php endif; ?>
 
             <div class="row">

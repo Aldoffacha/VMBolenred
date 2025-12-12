@@ -20,12 +20,12 @@ try {
         // Probar contraseña
         $password = 'tu_password'; // Cambia por tu password real
         if (password_verify($password, $user['contrasena'])) {
-            echo "✅ Contraseña CORRECTA<br>";
+            echo "Contraseña CORRECTA<br>";
         } else {
-            echo "❌ Contraseña INCORRECTA<br>";
+            echo "Contraseña INCORRECTA<br>";
         }
     } else {
-        echo "❌ Usuario no encontrado";
+        echo "Usuario no encontrado";
     }
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage();

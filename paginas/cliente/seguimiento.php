@@ -2,6 +2,7 @@
 require_once '../../includes/config.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
+require_once '../../includes/swift-alerts-helper.php';
 
 Auth::checkAuth('cliente');
 $db = (new Database())->getConnection();
@@ -59,7 +60,7 @@ if (!$envio) {
                                     'en_miami' => ['icon' => '🏢', 'text' => 'En depósito Miami', 'fecha' => $envio['fecha_salida_miami']],
                                     'en_transito' => ['icon' => '✈️', 'text' => 'En tránsito a Bolivia', 'fecha' => $envio['fecha_llegada_bolivia']],
                                     'en_aduanas' => ['icon' => '🛃', 'text' => 'En aduanas bolivianas', 'fecha' => null],
-                                    'entregado' => ['icon' => '✅', 'text' => 'Entregado', 'fecha' => $envio['fecha_entrega_cliente']]
+                                    'entregado' => ['icon' => '<i class="fas fa-check text-success"></i>', 'text' => 'Entregado', 'fecha' => $envio['fecha_entrega_cliente']]
                                 ];
                                 
                                 $estado_actual = $envio['estado'];

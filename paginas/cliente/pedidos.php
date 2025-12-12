@@ -2,6 +2,7 @@
 require_once '../../includes/config.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
+require_once '../../includes/swift-alerts-helper.php';
 
 Auth::checkAuth('cliente');
 $db = (new Database())->getConnection();
@@ -49,7 +50,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['cancelar_pedido']) && 
             </div>
 
             <?php if (isset($_GET['msg']) && $_GET['msg'] == 'cancelado'): ?>
-            <div class="alert alert-success">✅ Pedido cancelado correctamente</div>
+            <script>
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', function() {
+                        showSuccess('Pedido cancelado correctamente', 5000);
+                    });
+                } else {
+                    showSuccess('Pedido cancelado correctamente', 5000);
+                }
+            </script>
             <?php endif; ?>
 
             <div class="card">
@@ -110,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['cancelar_pedido']) && 
                                             <input type="hidden" name="id_pedido" value="<?php echo $pedido['id_pedido']; ?>">
                                             <button type="submit" name="cancelar_pedido" value="1" class="btn btn-sm btn-outline-danger"
                                                     onclick="return confirm('¿Cancelar este pedido?')">
-                                                ❌ Cancelar
+                                                Cancelar
                                             </button>
                                         </form>
                                         <?php endif; ?>

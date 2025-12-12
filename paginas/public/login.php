@@ -3,6 +3,7 @@ require_once '../../includes/config.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
 require_once '../../includes/auditoria.class.php';
+require_once '../../includes/swift-alerts-helper.php';
 
 if (Auth::isLoggedIn()) {
     header('Location: ../../index.php');
@@ -126,13 +127,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             ]);
             
             if ($result) {
-                error_log("✅ Auditoría de login registrada exitosamente para: $nombre_usuario ($correo) - Tipo: $tipo_auditoria");
+                error_log("Auditoría de login registrada exitosamente para: $nombre_usuario ($correo) - Tipo: $tipo_auditoria");
             } else {
-                error_log("❌ Error al registrar auditoría de login");
+                error_log("Error al registrar auditoría de login");
             }
             
         } catch (PDOException $e) {
-            error_log("❌ Error en auditoría de login: " . $e->getMessage());
+            error_log("Error en auditoría de login: " . $e->getMessage());
         }
 
         if ($tipo_usuario === 'administradores') {
@@ -144,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
         exit;
     } else {
-        $error = "❌ Credenciales incorrectas o usuario inactivo";
+        $error = "Credenciales incorrectas o usuario inactivo";
         error_log("Login failed for: $correo");
     }
 }
@@ -167,7 +168,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
             
             <?php if ($error): ?>
-                <div class="alert alert-danger"><?php echo $error; ?></div>
+            <script>
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', function() {
+                        showError('<?php echo addslashes($error); ?>', 5000);
+                    });
+                } else {
+                    showError('<?php echo addslashes($error); ?>', 5000);
+                }
+            </script>
             <?php endif; ?>
             
             <form method="POST">

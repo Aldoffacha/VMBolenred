@@ -4,6 +4,7 @@ require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
 require_once '../../includes/auditoria.class.php';
 require_once '../../includes/notificaciones.php';
+require_once '../../includes/swift-alerts-helper.php';
 
 try {
     Auth::checkAuth('admin');
@@ -59,9 +60,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $id, 
                             $estado
                         );
-                        error_log("✅ Notificación enviada al cliente ID: {$pedido_anterior['id_cliente']} sobre cambio de estado del pedido #$id a: $estado");
+                        error_log("Notificación enviada al cliente ID: {$pedido_anterior['id_cliente']} sobre cambio de estado del pedido #$id a: $estado");
                     } catch (Exception $e) {
-                        error_log("❌ Error al enviar notificación: " . $e->getMessage());
+                        error_log("Error al enviar notificación: " . $e->getMessage());
                     }
                     
                     // AUDITORÍA: Registrar cambio de estado
@@ -100,15 +101,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ':ip_address' => $ip_address
                         ]);
                         
-                        error_log("✅ Auditoría: Estado de pedido #$id cambiado de '{$pedido_anterior['estado']}' a '$estado' por admin ID: $admin_id");
+                        error_log("Auditoría: Estado de pedido #$id cambiado de '{$pedido_anterior['estado']}' a '$estado' por admin ID: $admin_id");
                         
                     } catch (PDOException $e) {
-                        error_log("❌ Error en auditoría de pedido: " . $e->getMessage());
+                        error_log("Error en auditoría de pedido: " . $e->getMessage());
                     }
                 } else {
                     $errorInfo = $stmt->errorInfo();
                     $_SESSION['error'] = "Error al actualizar el estado del pedido: " . $errorInfo[2];
-                    error_log("❌ Error SQL: " . $errorInfo[2]);
+                    error_log("Error SQL: " . $errorInfo[2]);
                 }
                 break;
         }
@@ -192,17 +193,29 @@ foreach ($contadores_db as $contador) {
                 </div>
 
                 <?php if (isset($_SESSION['success'])): ?>
-                    <div class="alert alert-success alert-dismissible fade show">
-                        <?php echo $_SESSION['success']; unset($_SESSION['success']); ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                    <script>
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', function() {
+                                showSuccess('<?php echo addslashes($_SESSION['success']); ?>', 5000);
+                            });
+                        } else {
+                            showSuccess('<?php echo addslashes($_SESSION['success']); ?>', 5000);
+                        }
+                    </script>
+                    <?php unset($_SESSION['success']); ?>
                 <?php endif; ?>
 
                 <?php if (isset($_SESSION['error'])): ?>
-                    <div class="alert alert-danger alert-dismissible fade show">
-                        <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                    <script>
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', function() {
+                                showError('<?php echo addslashes($_SESSION['error']); ?>', 5000);
+                            });
+                        } else {
+                            showError('<?php echo addslashes($_SESSION['error']); ?>', 5000);
+                        }
+                    </script>
+                    <?php unset($_SESSION['error']); ?>
                 <?php endif; ?>
 
                 <!-- Estadísticas de Pedidos -->
@@ -416,49 +429,36 @@ foreach ($contadores_db as $contador) {
                                                     <i class="fas fa-eye"></i>
                                                 </button>
                                                 
-                                                <!-- Botones individuales para cambiar estado -->
-                                                <?php if ($pedido['estado'] != 'pagado'): ?>
-                                                <form method="POST" class="d-inline" onsubmit="return confirm('¿Estás seguro de cambiar el estado a pagado?')">
-                                                    <input type="hidden" name="accion" value="actualizar_estado">
-                                                    <input type="hidden" name="id_pedido" value="<?php echo $pedido['id_pedido']; ?>">
-                                                    <input type="hidden" name="estado" value="pagado">
-                                                    <button type="submit" class="btn btn-sm btn-outline-info" title="Marcar como Pagado">
+                                                <!-- LÓGICA DE ESTADOS CORRECTA -->
+                                                <!-- PENDIENTE: Puede ir a PAGADO o CANCELADO -->
+                                                <?php if ($pedido['estado'] == 'pendiente'): ?>
+                                                    <button type="button" class="btn btn-sm btn-outline-info" title="Marcar como Pagado"
+                                                            onclick="mostrarConfirmacion('¿Estás seguro de cambiar el estado a pagado?', <?php echo $pedido['id_pedido']; ?>, 'pagado')">
                                                         <i class="fas fa-money-bill-wave"></i>
                                                     </button>
-                                                </form>
-                                                <?php endif; ?>
-                                                
-                                                <?php if ($pedido['estado'] != 'enviado'): ?>
-                                                <form method="POST" class="d-inline" onsubmit="return confirm('¿Estás seguro de cambiar el estado a enviado?')">
-                                                    <input type="hidden" name="accion" value="actualizar_estado">
-                                                    <input type="hidden" name="id_pedido" value="<?php echo $pedido['id_pedido']; ?>">
-                                                    <input type="hidden" name="estado" value="enviado">
-                                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Marcar como Enviado">
-                                                        <i class="fas fa-shipping-fast"></i>
-                                                    </button>
-                                                </form>
-                                                <?php endif; ?>
-                                                
-                                                <?php if ($pedido['estado'] != 'cancelado'): ?>
-                                                <form method="POST" class="d-inline" onsubmit="return confirm('¿Estás seguro de cancelar este pedido?')">
-                                                    <input type="hidden" name="accion" value="actualizar_estado">
-                                                    <input type="hidden" name="id_pedido" value="<?php echo $pedido['id_pedido']; ?>">
-                                                    <input type="hidden" name="estado" value="cancelado">
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancelar Pedido">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" title="Cancelar Pedido"
+                                                            onclick="mostrarConfirmacion('¿Estás seguro de cancelar este pedido?', <?php echo $pedido['id_pedido']; ?>, 'cancelado')">
                                                         <i class="fas fa-times-circle"></i>
                                                     </button>
-                                                </form>
                                                 <?php endif; ?>
                                                 
+                                                <!-- PAGADO: Solo puede ir a ENVIADO -->
+                                                <?php if ($pedido['estado'] == 'pagado'): ?>
+                                                    <button type="button" class="btn btn-sm btn-outline-success" title="Marcar como Enviado"
+                                                            onclick="mostrarConfirmacion('¿Estás seguro de cambiar el estado a enviado?', <?php echo $pedido['id_pedido']; ?>, 'enviado')">
+                                                        <i class="fas fa-shipping-fast"></i>
+                                                    </button>
+                                                <?php endif; ?>
+                                                
+                                                <!-- ENVIADO: No permite cambios (solo ver detalles) -->
+                                                <!-- No hay botones de cambio de estado -->
+                                                
+                                                <!-- CANCELADO: Solo puede reactivar a PENDIENTE -->
                                                 <?php if ($pedido['estado'] == 'cancelado'): ?>
-                                                <form method="POST" class="d-inline" onsubmit="return confirm('¿Estás seguro de reactivar este pedido?')">
-                                                    <input type="hidden" name="accion" value="actualizar_estado">
-                                                    <input type="hidden" name="id_pedido" value="<?php echo $pedido['id_pedido']; ?>">
-                                                    <input type="hidden" name="estado" value="pendiente">
-                                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Reactivar Pedido">
+                                                    <button type="button" class="btn btn-sm btn-outline-warning" title="Reactivar Pedido"
+                                                            onclick="mostrarConfirmacion('¿Estás seguro de reactivar este pedido?', <?php echo $pedido['id_pedido']; ?>, 'pendiente')">
                                                         <i class="fas fa-undo"></i>
                                                     </button>
-                                                </form>
                                                 <?php endif; ?>
                                             </div>
                                         </td>
@@ -473,6 +473,39 @@ foreach ($contadores_db as $contador) {
             </main>
         </div>
     </div>
+
+    <!-- Modal Flotante de Confirmación -->
+    <div class="modal fade" id="modalConfirmacion" tabindex="-1">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+                <div class="modal-header bg-warning bg-opacity-10 border-bottom-0">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                        Confirmación
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmMensaje" class="mb-0"></p>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmarAccion" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                        <i class="fas fa-check me-1"></i> Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario oculto para enviar cambios de estado -->
+    <form id="formCambioEstado" method="POST" style="display: none;">
+        <input type="hidden" name="accion" value="actualizar_estado">
+        <input type="hidden" name="id_pedido" id="hiddenPedidoId" value="">
+        <input type="hidden" name="estado" id="hiddenEstado" value="">
+    </form>
 
     <!-- Modal Único para Detalles -->
     <div class="modal fade" id="modalDetallePedido" tabindex="-1">
@@ -492,11 +525,45 @@ foreach ($contadores_db as $contador) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
+    let pedidoIdPendiente = null;
+    let estadoPendiente = null;
+
+    function mostrarConfirmacion(mensaje, pedidoId, estado) {
+        // Actualizar el mensaje del modal
+        document.getElementById('confirmMensaje').textContent = mensaje;
+        
+        // Guardar los valores para usar cuando se confirme
+        pedidoIdPendiente = pedidoId;
+        estadoPendiente = estado;
+        
+        // Mostrar el modal
+        const modal = new bootstrap.Modal(document.getElementById('modalConfirmacion'));
+        modal.show();
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         // Inicializar tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Manejar clic en botón confirmar del modal
+        document.getElementById('btnConfirmarAccion').addEventListener('click', function() {
+            if (pedidoIdPendiente && estadoPendiente) {
+                // Llenar el formulario oculto
+                document.getElementById('hiddenPedidoId').value = pedidoIdPendiente;
+                document.getElementById('hiddenEstado').value = estadoPendiente;
+                
+                // Enviar el formulario
+                document.getElementById('formCambioEstado').submit();
+            }
+        });
+
+        // Manejar cierre del modal
+        document.getElementById('modalConfirmacion').addEventListener('hidden.bs.modal', function() {
+            pedidoIdPendiente = null;
+            estadoPendiente = null;
         });
 
         // Manejar clic en botones de ver detalles

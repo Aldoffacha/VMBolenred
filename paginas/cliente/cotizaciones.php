@@ -2,12 +2,14 @@
 require_once '../../includes/config.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
+require_once '../../includes/swift-alerts-helper.php';
 
 Auth::checkAuth('cliente');
 $db = (new Database())->getConnection();
 
 $user_id = $_SESSION['user_id'];
 $mensaje = '';
+$mensaje_tipo = '';
 
 // Procesar nueva cotización
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['crear_cotizacion'])) {
@@ -28,12 +30,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['crear_cotizacion'])) {
                 $costos['flete'], $costos['aduana'], $costos['almacen'], $costos['seguro'], $costos['total']
             ]);
             
-            $mensaje = "✅ Cotización creada correctamente";
+            $mensaje = "Cotización creada correctamente";
+            $mensaje_tipo = 'success';
         } catch (Exception $e) {
-            $mensaje = "❌ Error al crear cotización: " . $e->getMessage();
+            $mensaje = "Error al crear cotización: " . $e->getMessage();
+            $mensaje_tipo = 'danger';
         }
     } else {
-        $mensaje = "❌ Complete todos los campos correctamente";
+        $mensaje = "Complete todos los campos correctamente";
+        $mensaje_tipo = 'danger';
     }
 }
 
@@ -48,7 +53,8 @@ if (isset($_GET['eliminar'])) {
     if ($stmt->rowCount() > 0) {
         $stmt = $db->prepare("DELETE FROM cotizaciones WHERE id_cotizacion = ?");
         $stmt->execute([$id_cotizacion]);
-        $mensaje = "✅ Cotización eliminada";
+        $mensaje = "Cotización eliminada";
+        $mensaje_tipo = 'success';
     }
 }
 
@@ -97,9 +103,15 @@ function calcularCostosCotizacion($precio, $peso, $categoria, $tamano) {
             </div>
 
             <?php if ($mensaje): ?>
-            <div class="alert alert-<?php echo strpos($mensaje, '✅') !== false ? 'success' : 'danger'; ?>">
-                <?php echo $mensaje; ?>
-            </div>
+            <script>
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', function() {
+                        showAlert('<?php echo addslashes($mensaje); ?>', '<?php echo $mensaje_tipo === 'danger' ? 'danger' : 'success'; ?>', 5000);
+                    });
+                } else {
+                    showAlert('<?php echo addslashes($mensaje); ?>', '<?php echo $mensaje_tipo === 'danger' ? 'danger' : 'success'; ?>', 5000);
+                }
+            </script>
             <?php endif; ?>
 
             <div class="row">
@@ -261,7 +273,7 @@ function verDetalleCotizacion(idCotizacion) {
             document.getElementById('detalleCotizacionContent').innerHTML = data.html;
             $('#modalDetalleCotizacion').modal('show');
         } else {
-            alert('Error al cargar detalles');
+            showError('Error al cargar detalles');
         }
     });
 }

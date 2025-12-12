@@ -2,6 +2,7 @@
 require_once '../../includes/config.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
+require_once '../../includes/swift-alerts-helper.php';
 Auth::checkAuth('empleado');
 
 $db = (new Database())->getConnection();
@@ -404,7 +405,7 @@ $pedidos_recientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 function procesarPedido(id) {
     if (confirm('¿Estás seguro de procesar este pedido?')) {
         // Aquí iría la lógica para procesar el pedido
-        alert('Pedido #VM' + id + ' en proceso');
+        showInfo('Pedido #VM' + id + ' en proceso');
         location.reload();
     }
 }
@@ -412,7 +413,7 @@ function procesarPedido(id) {
 function completarPedido(id) {
     if (confirm('¿Marcar este pedido como completado?')) {
         // Aquí iría la lógica para completar el pedido
-        alert('Pedido #VM' + id + ' completado');
+        showSuccess('Pedido #VM' + id + ' completado');
         location.reload();
     }
 }

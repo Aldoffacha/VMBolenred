@@ -2,6 +2,7 @@
 require_once '../../includes/config.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
+require_once '../../includes/swift-alerts-helper.php';
 
 Auth::checkAuth('cliente');
 $db = (new Database())->getConnection();
@@ -152,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_pago'])) {
 
     } catch (Exception $e) {
         $db->rollBack();
-        $error = "❌ Error: " . $e->getMessage();
+        $error = "Error: " . $e->getMessage();
     }
 }
 ?>
@@ -177,7 +178,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_pago'])) {
             </div>
 
             <?php if ($error): ?>
-            <div class="alert alert-danger"><?php echo $error; ?></div>
+            <script>
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', function() {
+                        showError('<?php echo addslashes($error); ?>', 5000);
+                    });
+                } else {
+                    showError('<?php echo addslashes($error); ?>', 5000);
+                }
+            </script>
             <?php endif; ?>
 
             <div class="row">

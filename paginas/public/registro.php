@@ -2,7 +2,8 @@
 require_once '../../includes/config.php';
 require_once '../../includes/database.php';
 require_once '../../includes/funciones.php';
-require_once '../../includes/auditoria.class.php'; // <-- AÑADIR ESTA LÍNEA
+require_once '../../includes/auditoria.class.php';
+require_once '../../includes/swift-alerts-helper.php';
 
 if (isset($_SESSION['user_id'])) {
     header('Location: ../../index.php');
@@ -130,13 +131,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     ]);
                     
                     if ($result) {
-                        error_log("✅ Auditoría de registro exitoso para: $nombre ($correo)");
+                        error_log("Auditoría de registro exitoso para: $nombre ($correo)");
                     } else {
-                        error_log("❌ Error al registrar auditoría de registro");
+                        error_log("Error al registrar auditoría de registro");
                     }
                     
                 } catch (PDOException $e) {
-                    error_log("❌ Error en auditoría de registro: " . $e->getMessage());
+                    error_log("Error en auditoría de registro: " . $e->getMessage());
                 }
             }
         } catch (Exception $e) {
@@ -170,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     ':ip_address' => $ip_address
                 ]);
             } catch (PDOException $audit_error) {
-                error_log("❌ Error en auditoría de error: " . $audit_error->getMessage());
+                error_log("Error en auditoría de error: " . $audit_error->getMessage());
             }
         }
     }
@@ -204,13 +205,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
             
             <?php if ($error): ?>
-                <div class="alert alert-danger">❌ <?php echo $error; ?></div>
+                <script>
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', function() {
+                            showError('<?php echo addslashes($error); ?>', 5000);
+                        });
+                    } else {
+                        showError('<?php echo addslashes($error); ?>', 5000);
+                    }
+                </script>
             <?php endif; ?>
             
             <?php if ($success): ?>
-                <div class="alert alert-success">✅ <?php echo $success; ?>
-                    <br><a href="login.php" class="alert-link">👉 Ir al login</a>
-                </div>
+                <script>
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', function() {
+                            showSuccess('<?php echo addslashes($success); ?>', 5000);
+                        });
+                    } else {
+                        showSuccess('<?php echo addslashes($success); ?>', 5000);
+                    }
+                </script>
             <?php else: ?>
             
             <form method="POST" id="registroForm">
@@ -266,7 +281,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <div class="mb-3 form-check">
                     <input type="checkbox" class="form-check-input" id="terminos" required>
                     <label class="form-check-label" for="terminos">
-                        ✅ Acepto los <a href="#" class="text-primary">términos y condiciones</a>
+                        Acepto los <a href="#" class="text-primary">términos y condiciones</a>
                     </label>
                 </div>
                 
@@ -316,10 +331,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             if (confirmPassword.length > 0) {
                 if (password === confirmPassword) {
-                    matchText.innerHTML = '✅ Las contraseñas coinciden';
+                    matchText.innerHTML = 'Las contraseñas coinciden';
                     matchText.style.color = 'green';
                 } else {
-                    matchText.innerHTML = '❌ Las contraseñas no coinciden';
+                    matchText.innerHTML = 'Las contraseñas no coinciden';
                     matchText.style.color = 'red';
                 }
             } else {
@@ -335,13 +350,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             if (password !== confirmPassword) {
                 e.preventDefault();
-                alert('❌ Las contraseñas no coinciden');
+                showWarning('Las contraseñas no coinciden');
                 return false;
             }
             
             if (!terminos) {
                 e.preventDefault();
-                alert('❌ Debes aceptar los términos y condiciones');
+                showWarning('Debes aceptar los términos y condiciones');
                 return false;
             }
         });

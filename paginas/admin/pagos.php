@@ -2,6 +2,7 @@
 require_once '../../includes/config.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
+require_once '../../includes/swift-alerts-helper.php';
 
 try { Auth::checkAuth('admin'); } catch (Exception $e) { header('Location: ../public/login.php'); exit; }
 $db = (new Database())->getConnection();

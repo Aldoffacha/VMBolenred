@@ -2,6 +2,7 @@
 require_once '../../includes/config.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
+require_once '../../includes/swift-alerts-helper.php';
 
 try {
     Auth::checkAuth('admin');
@@ -491,7 +492,7 @@ $empleados = $stmt->fetchAll(PDO::FETCH_ASSOC);
             })
             .then(empleado => {
                 if (empleado.error) {
-                    alert(empleado.error);
+                    showError(empleado.error);
                     return;
                 }
                 
@@ -509,7 +510,7 @@ $empleados = $stmt->fetchAll(PDO::FETCH_ASSOC);
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Error al cargar datos del empleado: ' + error.message);
+                showError('Error al cargar datos del empleado: ' + error.message);
             });
     }
 

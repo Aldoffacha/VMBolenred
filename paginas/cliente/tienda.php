@@ -2,6 +2,7 @@
 require_once '../../includes/config.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/database.php';
+require_once '../../includes/swift-alerts-helper.php';
 
 Auth::checkAuth('cliente');
 $db = (new Database())->getConnection();
@@ -462,7 +463,7 @@ function confirmarAgregarCarrito() {
     const cantidad = parseInt(document.getElementById('cantidadProducto').value);
     
     if (cantidad < 1) {
-        alert('Por favor selecciona una cantidad válida');
+        showWarning('Por favor selecciona una cantidad válida');
         return;
     }
     
@@ -483,17 +484,17 @@ function confirmarAgregarCarrito() {
             modal.hide();
             
             // Mostrar mensaje de éxito
-            alert(`✅ ${data.message}`);
+            showSuccess(data.message);
             
             // Actualizar contador del carrito
             actualizarContadorCarrito();
         } else {
-            alert(`❌ ${data.message}`);
+            showError(data.message);
         }
-    })
+    }
     .catch(error => {
         console.error('Error:', error);
-        alert('❌ Error de conexión');
+        showError('Error de conexión');
     });
 }
 

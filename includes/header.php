@@ -22,6 +22,73 @@ require_once '../../includes/notificaciones.php';
 <?php if (isset($_SESSION['rol'])): ?>
     <link rel="stylesheet" href="../../assets/css/<?php echo $_SESSION['rol']; ?>.css">
 <?php endif; ?>
+    <!-- Estilos para dropdown notificaciones en modo oscuro -->
+    <style>
+        :root {
+            --dropdown-bg: #ffffff;
+            --dropdown-text: #000000;
+            --dropdown-border: #dee2e6;
+            --dropdown-hover: #f8f9fa;
+            --dropdown-muted: #6c757d;
+        }
+
+        [data-theme="dark"] {
+            --dropdown-bg: #2c333a;
+            --dropdown-text: #e0e0e0;
+            --dropdown-border: #444c56;
+            --dropdown-hover: #3a4350;
+            --dropdown-muted: #a0a0a0;
+        }
+
+        .dropdown-menu {
+            background-color: var(--dropdown-bg) !important;
+            color: var(--dropdown-text) !important;
+            border-color: var(--dropdown-border) !important;
+        }
+
+        .dropdown-item {
+            color: var(--dropdown-text) !important;
+        }
+
+        .dropdown-item:hover {
+            background-color: var(--dropdown-hover) !important;
+            color: var(--dropdown-text) !important;
+        }
+
+        .dropdown-header {
+            color: var(--dropdown-text) !important;
+            background-color: var(--dropdown-bg) !important;
+            border-bottom-color: var(--dropdown-border) !important;
+        }
+
+        .dropdown-divider {
+            border-color: var(--dropdown-border) !important;
+        }
+
+        .dropdown-item.text-muted {
+            color: var(--dropdown-muted) !important;
+        }
+
+        [data-theme="dark"] .btn-outline-secondary {
+            border-color: #999 !important;
+            color: #ccc !important;
+        }
+
+        [data-theme="dark"] .btn-outline-secondary:hover {
+            background-color: #999 !important;
+            color: white !important;
+        }
+
+        [data-theme="dark"] .btn-outline-primary {
+            border-color: #667eea !important;
+            color: #667eea !important;
+        }
+
+        [data-theme="dark"] .btn-outline-primary:hover {
+            background-color: #667eea !important;
+            color: white !important;
+        }
+    </style>
     <!-- Script para aplicar tema ANTES de renderizar (evita flash) -->
     <script>
         (function() {
@@ -40,8 +107,24 @@ require_once '../../includes/notificaciones.php';
     <?php if (isset($_SESSION['user_id'])): 
         // Obtener notificaciones
         $notificaciones = new Notificaciones();
-        $notifs = $notificaciones->obtener($_SESSION['user_id'], $_SESSION['rol']);
+        $todas_notifs = $notificaciones->obtener($_SESSION['user_id'], $_SESSION['rol'], 50);
         $no_leidas = $notificaciones->obtenerNoLeidas($_SESSION['user_id'], $_SESSION['rol']);
+        
+        // Separar leídas y no leídas
+        $notifs_no_leidas = [];
+        $notifs_leidas = [];
+        
+        foreach ($todas_notifs as $notif) {
+            if (!$notif['leido']) {
+                $notifs_no_leidas[] = $notif;
+            } else {
+                $notifs_leidas[] = $notif;
+            }
+        }
+        
+        // Combinar: primero no leídas, luego leídas (máximo 2 total)
+        $notifs = array_merge($notifs_no_leidas, $notifs_leidas);
+        $notifs = array_slice($notifs, 0, 2);
     ?>
     <header class="header">
         <nav class="navbar navbar-expand-lg">
@@ -67,7 +150,7 @@ require_once '../../includes/notificaciones.php';
                             <li class="dropdown-header d-flex justify-content-between align-items-center">
                                 <strong>Notificaciones</strong>
                                 <?php if ($no_leidas > 0): ?>
-                                <button class="btn btn-sm btn-outline-secondary" onclick="marcarTodasLeidas()">
+                                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="event.preventDefault(); event.stopPropagation(); marcarTodasLeidas();">
                                     Marcar todas como leídas
                                 </button>
                                 <?php endif; ?>
@@ -78,9 +161,9 @@ require_once '../../includes/notificaciones.php';
                             <?php foreach ($notifs as $notif): ?>
                             <li>
                                 <a class="dropdown-item <?php echo !$notif['leido'] ? 'bg-light' : ''; ?> notificacion-item" 
-                                   href="<?php echo $notif['enlace'] ?: '#'; ?>" 
+                                   href="javascript:void(0);" 
                                    data-id="<?php echo $notif['id_notificacion']; ?>"
-                                   onclick="marcarLeida(<?php echo $notif['id_notificacion']; ?>)">
+                                   onclick="event.preventDefault(); event.stopPropagation(); marcarLeida(<?php echo $notif['id_notificacion']; ?>);">
                                     <div class="d-flex w-100 justify-content-between">
                                         <h6 class="mb-1"><?php echo htmlspecialchars($notif['titulo']); ?></h6>
                                         <small class="text-muted"><?php 
@@ -125,19 +208,15 @@ require_once '../../includes/notificaciones.php';
     
     <!-- Script para notificaciones -->
     <script>
-    // Script para notificaciones - VERSIÓN MEJORADA
 function marcarLeida(id_notificacion) {
     fetch('../../procesos/marcar_notificacion_leida.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'id_notificacion=' + id_notificacion
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Remover el badge "Nuevo" y actualizar contador
             const item = document.querySelector(`.notificacion-item[data-id="${id_notificacion}"]`);
             if (item) {
                 item.classList.remove('bg-light');
@@ -145,45 +224,33 @@ function marcarLeida(id_notificacion) {
                 if (badge) badge.remove();
             }
             actualizarContadorNotificaciones();
-        } else {
-            console.error('Error al marcar como leída:', data.message);
         }
     })
-    .catch(error => {
-        console.error('Error de conexión:', error);
-    });
+    .catch(error => console.error('Error:', error));
 }
 
 function marcarTodasLeidas() {
     fetch('../../procesos/marcar_todas_leidas.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        }
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'}
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Actualizar la UI
             document.querySelectorAll('.notificacion-item').forEach(item => {
                 item.classList.remove('bg-light');
                 const badge = item.querySelector('.badge');
                 if (badge) badge.remove();
             });
             actualizarContadorNotificaciones();
-            
-            // Cerrar el dropdown
             const dropdown = document.getElementById('notificacionesDropdown');
             if (dropdown) {
-                bootstrap.Dropdown.getInstance(dropdown)?.hide();
+                const instance = bootstrap.Dropdown.getInstance(dropdown);
+                if (instance) instance.hide();
             }
-        } else {
-            console.error('Error al marcar todas como leídas:', data.message);
         }
     })
-    .catch(error => {
-        console.error('Error de conexión:', error);
-    });
+    .catch(error => console.error('Error:', error));
 }
 
 function actualizarContadorNotificaciones() {
@@ -195,36 +262,35 @@ function actualizarContadorNotificaciones() {
             const dropdownToggle = document.getElementById('notificacionesDropdown');
             
             if (data.no_leidas > 0) {
-                if (!badge) {
-                    // Crear badge si no existe
+                if (!badge && dropdownToggle) {
                     const newBadge = document.createElement('span');
                     newBadge.className = 'position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger';
                     newBadge.textContent = data.no_leidas;
                     dropdownToggle.appendChild(newBadge);
-                } else {
-                    // Actualizar badge existente
+                } else if (badge) {
                     badge.textContent = data.no_leidas;
                 }
             } else if (badge) {
-                // Remover badge si no hay notificaciones no leídas
                 badge.remove();
             }
         }
     })
-    .catch(error => {
-        console.error('Error al actualizar contador:', error);
-    });
+    .catch(error => console.error('Error:', error));
 }
 
-// Actualizar notificaciones cada 30 segundos
-setInterval(actualizarContadorNotificaciones, 30000);
-
-// Actualizar al cargar la página
 document.addEventListener('DOMContentLoaded', function() {
     actualizarContadorNotificaciones();
 });
+
+setInterval(actualizarContadorNotificaciones, 30000);
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Swift Alerts (Sistema de alertas deslizantes) -->
+    <script src="../../assets/js/swift-alerts.js"></script>
+    
+    <!-- Convertidor de alertas antiguas a Swift Alerts -->
+    <script src="../../assets/js/alert-converter.js"></script>
     
     <!-- Gestor de temas persistente -->
     <script src="../../assets/js/theme-manager.js"></script>
