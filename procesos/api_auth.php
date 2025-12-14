@@ -16,118 +16,104 @@ try {
     $database = new Database();
     $db = $database->getConnection();
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => 'Error de conexión: ' . $e->getMessage()]);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Error de conexión a la base de datos'
+    ]);
     exit;
 }
 
-$method = $_SERVER['REQUEST_METHOD'];
-$request = isset($_GET['action']) ? $_GET['action'] : '';
+// 🔴 LEER JSON UNA SOLA VEZ
+$rawInput = file_get_contents('php://input');
+$data = json_decode($rawInput, true);
 
-function loginCliente($db, $correo, $password) {
-    try {
-        $query = "SELECT id_cliente, nombre, correo, telefono, direccion, foto_perfil, contrasena, estado
-                  FROM clientes 
-                  WHERE correo = ? AND estado = 1";
-        
-        $stmt = $db->prepare($query);
-        $stmt->execute([$correo]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$user) {
-            return ['success' => false, 'message' => 'Credenciales inválidas'];
-        }
-        
-        // Verificar contraseña
-        if (!password_verify($password, $user['contrasena'])) {
-            return ['success' => false, 'message' => 'Credenciales inválidas'];
-        }
-        
-        // Registrar login
-        $ip = $_SERVER['REMOTE_ADDR'];
-        $user_agent = $_SERVER['HTTP_USER_AGENT'];
-        
-        $log_query = "INSERT INTO logins (usuario_id, correo, tipo_usuario, ip_address, user_agent, fecha_login)
-                      VALUES (?, ?, 'cliente', ?, ?, NOW())";
-        $log_stmt = $db->prepare($log_query);
-        $log_stmt->execute([$user['id_cliente'], $correo, $ip, $user_agent]);
-        
-        // Eliminar datos sensibles
-        unset($user['contrasena']);
-        unset($user['estado']);
-        
-        return ['success' => true, 'user' => $user, 'tipo' => 'cliente'];
-        
-    } catch (PDOException $e) {
-        error_log("Error en loginCliente: " . $e->getMessage());
-        return ['success' => false, 'message' => 'Error en el servidor'];
-    }
-}
+$action = $_GET['action'] ?? '';
+$method = $_SERVER['REQUEST_METHOD'];
+
+/* =========================
+   FUNCIONES
+========================= */
 
 function loginEmpleado($db, $correo, $password) {
     try {
-        $query = "SELECT id_empleado, nombre, correo, telefono, contrasena, estado
-                  FROM empleados 
-                  WHERE correo = ? AND estado = 1";
-        
-        $stmt = $db->prepare($query);
+        $sql = "
+            SELECT id_empleado, nombre, correo, telefono, contrasena
+            FROM empleados
+            WHERE correo = ? AND estado = 1
+            LIMIT 1
+        ";
+
+        $stmt = $db->prepare($sql);
         $stmt->execute([$correo]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$user) {
+        $empleado = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$empleado) {
             return ['success' => false, 'message' => 'Credenciales inválidas'];
         }
-        
-        // Verificar contraseña
-        if (!password_verify($password, $user['contrasena'])) {
+
+        if (!password_verify($password, $empleado['contrasena'])) {
             return ['success' => false, 'message' => 'Credenciales inválidas'];
         }
-        
-        // Registrar login
-        $ip = $_SERVER['REMOTE_ADDR'];
-        $user_agent = $_SERVER['HTTP_USER_AGENT'];
-        
-        $log_query = "INSERT INTO logins (usuario_id, correo, tipo_usuario, ip_address, user_agent, fecha_login)
-                      VALUES (?, ?, 'empleado', ?, ?, NOW())";
-        $log_stmt = $db->prepare($log_query);
-        $log_stmt->execute([$user['id_empleado'], $correo, $ip, $user_agent]);
-        
-        // Eliminar datos sensibles
-        unset($user['contrasena']);
-        unset($user['estado']);
-        
-        return ['success' => true, 'user' => $user, 'tipo' => 'empleado'];
-        
+
+        unset($empleado['contrasena']);
+
+        return [
+            'success' => true,
+            'user' => $empleado,
+            'tipo' => 'empleado'
+        ];
+
     } catch (PDOException $e) {
-        error_log("Error en loginEmpleado: " . $e->getMessage());
-        return ['success' => false, 'message' => 'Error en el servidor'];
+        error_log($e->getMessage());
+        return ['success' => false, 'message' => 'Error interno del servidor'];
     }
 }
 
-// Manejo de rutas
-switch($request) {
+/* =========================
+   ROUTER
+========================= */
+
+switch ($action) {
     case 'login':
-        if ($method === 'POST') {
-            $data = json_decode(file_get_contents('php://input'), true);
-            
-            if (!isset($data['correo']) || !isset($data['password']) || !isset($data['tipo'])) {
-                echo json_encode(['success' => false, 'message' => 'Datos incompletos']);
-                break;
-            }
-            
-            if ($data['tipo'] === 'cliente') {
-                $result = loginCliente($db, $data['correo'], $data['password']);
-            } elseif ($data['tipo'] === 'empleado') {
-                $result = loginEmpleado($db, $data['correo'], $data['password']);
-            } else {
-                $result = ['success' => false, 'message' => 'Tipo de usuario inválido'];
-            }
-            
-            echo json_encode($result);
+
+        if ($method !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Método no permitido']);
+            exit;
         }
-        break;
-        
+
+        if (
+            empty($data['correo']) ||
+            empty($data['password']) ||
+            empty($data['tipo'])
+        ) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Datos incompletos'
+            ]);
+            exit;
+        }
+
+        if ($data['tipo'] !== 'empleado') {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Tipo de usuario inválido'
+            ]);
+            exit;
+        }
+
+        $resultado = loginEmpleado(
+            $db,
+            $data['correo'],
+            $data['password']
+        );
+
+        echo json_encode($resultado);
+        exit;
+
     default:
-        echo json_encode(['success' => false, 'message' => 'Acción no válida']);
-        break;
+        echo json_encode([
+            'success' => false,
+            'message' => 'Acción no válida'
+        ]);
+        exit;
 }
-?>

@@ -107,7 +107,7 @@
                 </a>
             </li>
             <li class="nav-item mb-2">
-                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'pedidos.php' ? 'active' : ''; ?>" href="pedidos.php">
+                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'pedidos.php' ? 'active' : ''; ?>" href="mis_pedidos.php">
                     <i class="fas fa-clipboard-list me-2"></i>Mis Pedidos
                 </a>
             </li>
