@@ -37,6 +37,13 @@
                 </li>
                 
                 <li class="nav-item">
+                    <a href="/paginas/admin/productos_externos.php" class="nav-link">
+                        <i class="nav-icon bi bi-globe"></i>
+                        <p>Productos Externos</p>
+                    </a>
+                </li>
+                
+                <li class="nav-item">
                     <a href="/procesos/logout.php" class="nav-link text-danger">
                         <i class="nav-icon bi bi-box-arrow-right"></i>
                         <p>Cerrar Sesión</p>

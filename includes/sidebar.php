@@ -23,6 +23,10 @@
     <a class="nav-link <?php echo $current_page == 'productos.php' ? 'active' : ''; ?>" href="productos.php">
         <i class="fas fa-box me-2"></i> Productos
     </a>
+</li> <li class="nav-item">
+    <a class="nav-link <?php echo $current_page == 'productos_externos.php' ? 'active' : ''; ?>" href="productos_externos.php">
+        <i class="fas fa-box me-2"></i> Productos_Externos
+    </a>
 </li>
 <li class="nav-item">
     <a class="nav-link <?php echo $current_page == 'pedidos.php' ? 'active' : ''; ?>" href="pedidos.php">

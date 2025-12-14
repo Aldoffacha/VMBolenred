@@ -263,14 +263,12 @@ foreach ($categorias as $categoria_key => $categoria_info) {
 // Productos de Amazon y eBay (simulados)
 // Obtener productos externos REALES de la base de datos
 $stmt = $db->prepare("
-    SELECT pe.*, t.nombre_tienda 
-    FROM productos_externos pe
-    JOIN tiendas_usa t ON pe.id_tienda = t.id_tienda
-    WHERE pe.id_cliente = ? AND pe.estado = 1
-    ORDER BY pe.fecha_registro DESC
+    SELECT * FROM productos_exterior
+    WHERE estado = 1 AND destacado = 1
+    ORDER BY fecha_agregado DESC
     LIMIT 8
 ");
-$stmt->execute([$user_id]);
+$stmt->execute();
 $productos_externos_reales = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Productos de Amazon y eBay (simulados como respaldo)

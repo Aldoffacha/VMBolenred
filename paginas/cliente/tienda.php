@@ -11,8 +11,20 @@ $db = (new Database())->getConnection();
 $busqueda = $_GET['busqueda'] ?? '';
 $categoria = $_GET['categoria'] ?? '';
 
-// Productos de Amazon y eBay (simulados) - CON IMÁGENES QUE SÍ FUNCIONAN
-$productos_externos = [
+// Obtener productos externos destacados de la BD
+$stmt = $db->prepare("SELECT * FROM productos_exterior WHERE estado = 1 AND destacado = 1");
+$stmt->execute();
+$productos_exterior_bd = $stmt->fetchAll();
+
+// Agregar campo stock a productos de BD (100 por defecto)
+foreach ($productos_exterior_bd as &$prod) {
+    $prod['stock'] = $prod['stock'] ?? 100;
+    $prod['id_producto'] = 'ext_' . $prod['id_producto_exterior'];
+}
+unset($prod);
+
+// Combinar con productos externos simulados
+$productos_externos = array_merge($productos_exterior_bd, [
     // Amazon Products (2 productos)
     [
         'id_producto' => 'amz001',
@@ -60,7 +72,7 @@ $productos_externos = [
         'imagen' => 'https://images.unsplash.com/photo-1541140532154-b024d705b90a?w=400&h=300&fit=crop',
         'enlace' => 'https://ebay.com/itm/SteelSeries-Apex-Pro-TKL-Gaming-Keyboard'
     ]
-];
+]);
 
 // Obtener productos de tu base de datos LOCAL
 $query = "SELECT * FROM productos WHERE estado = 1";
@@ -487,11 +499,11 @@ function confirmarAgregarCarrito() {
             showSuccess(data.message);
             
             // Actualizar contador del carrito
-            actualizarContadorCarrito();
+            actualizarCarrito();
         } else {
             showError(data.message);
         }
-    }
+    })
     .catch(error => {
         console.error('Error:', error);
         showError('Error de conexión');
@@ -519,17 +531,6 @@ function filtrarPlataforma(plataforma) {
         } else {
             const productoPlataforma = producto.getAttribute('data-plataforma');
             producto.style.display = productoPlataforma === plataforma ? 'block' : 'none';
-        }
-    });
-}
-
-function actualizarContadorCarrito() {
-    fetch('../../procesos/obtener_carrito.php')
-    .then(response => response.json())
-    .then(data => {
-        const badge = document.querySelector('.carrito-badge');
-        if (badge) {
-            badge.textContent = data.total || '0';
         }
     });
 }
@@ -582,7 +583,7 @@ function verDetalle(idProducto, imagenUrl, nombre, precio, descripcion, stock, p
                     <li class="border-top pt-2 mt-2"><strong>Total por unidad: $${cotizacion.total.toFixed(2)}</strong></li>
                 </ul>
                 <div class="d-grid gap-2">
-                    <button class="btn btn-primary" onclick="$('#modalDetalle').modal('hide'); setTimeout(() => mostrarModalCarrito('${idProducto}', '${nombre}', ${precio}, '${imagenUrl}', ${stock}, '${plataforma}'), 300);">
+                    <button class="btn btn-primary" onclick="const modalDetalle = bootstrap.Modal.getInstance(document.getElementById('modalDetalle')); if(modalDetalle) modalDetalle.hide(); setTimeout(() => mostrarModalCarrito('${idProducto}', '${nombre}', ${precio}, '${imagenUrl}', ${stock}, '${plataforma}'), 300);">
                         <i class="fas fa-cart-plus me-1"></i>Agregar al Carrito
                     </button>
                 </div>
@@ -590,7 +591,8 @@ function verDetalle(idProducto, imagenUrl, nombre, precio, descripcion, stock, p
         </div>
     `;
     document.getElementById('detalleContenido').innerHTML = contenido;
-    $('#modalDetalle').modal('show');
+    const modalDetalle = new bootstrap.Modal(document.getElementById('modalDetalle'));
+    modalDetalle.show();
 }
 
 function calcularCostoDetalle(precio) {
